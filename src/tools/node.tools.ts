@@ -5,8 +5,20 @@ import type { Node } from '../types.js';
 
 export const registerNodeTools = (server: McpServer) => {
   server.tool(
+    'get_nodes_info',
+    'Get information about available node types (trigger_types, action_types) and their configuration options. Call this first to see available types before creating nodes.',
+    {},
+    async () => {
+      const client = getApiClient();
+      const result = await client.get('/info/nodes_info');
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      };
+    }
+  );
+  server.tool(
     'node_create_trigger',
-    'Create a new trigger node in a scheme. Triggers start the execution of automation workflows.',
+    'Create a new trigger node in a scheme. Triggers start the execution of automation workflows. Call get_nodes_info first to see available types.',
     {
       scheme: z.string().optional().describe('The scheme ID where the trigger will be created (uses MCP_SCHEME_ID env if not provided)'),
       trigger_type: z.string().describe('Type of trigger (e.g., WEBHOOK, INTERVAL, CODE_ACTION)'),
@@ -33,7 +45,7 @@ export const registerNodeTools = (server: McpServer) => {
   );
   server.tool(
     'node_create_action',
-    'Create a new action node in a scheme. Actions perform operations like sending emails, making HTTP requests, etc.',
+    'Create a new action node in a scheme. Actions perform operations like sending emails, making HTTP requests, etc. Call get_nodes_info first to see available types.',
     {
       scheme: z.string().optional().describe('The scheme ID where the action will be created (uses MCP_SCHEME_ID env if not provided)'),
       action_type: z.string().describe('Type of action (e.g., REQUEST, CONDITION, TG_BOT_MESSAGE_SEND, SET_CONTEXT_PARAM_DATA)'),
