@@ -3,6 +3,32 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { getApiClient, getSchemeId } from '../api-client.js';
 import type { Node } from '../types.js';
 
+interface NodeTypeInfo {
+  key: string;
+}
+interface NodesInfoResponse {
+  trigger_types: NodeTypeInfo[];
+  action_types: NodeTypeInfo[];
+  node_config_info: Record<string, unknown>;
+}
+let cachedNodesInfo: NodesInfoResponse | null = null;
+const getNodesInfo = async (): Promise<NodesInfoResponse> => {
+  if (cachedNodesInfo) return cachedNodesInfo;
+  const client = getApiClient();
+  cachedNodesInfo = await client.get<NodesInfoResponse>('/info/nodes_info');
+  return cachedNodesInfo;
+};
+const validateTriggerType = async (triggerType: string): Promise<{ valid: boolean; availableTypes: string[] }> => {
+  const info = await getNodesInfo();
+  const availableTypes = info.trigger_types.map(t => t.key);
+  return { valid: availableTypes.includes(triggerType), availableTypes };
+};
+const validateActionType = async (actionType: string): Promise<{ valid: boolean; availableTypes: string[] }> => {
+  const info = await getNodesInfo();
+  const availableTypes = info.action_types.map(t => t.key);
+  return { valid: availableTypes.includes(actionType), availableTypes };
+};
+
 export const registerNodeTools = (server: McpServer) => {
   server.tool(
     'get_nodes_info',
@@ -27,6 +53,15 @@ export const registerNodeTools = (server: McpServer) => {
     },
     async ({ scheme, trigger_type, slug, description }) => {
       try {
+        const validation = await validateTriggerType(trigger_type);
+        if (!validation.valid) {
+          return {
+            content: [{ type: 'text', text: JSON.stringify({
+              success: false,
+              error: `Invalid trigger_type "${trigger_type}". Available types: ${validation.availableTypes.join(', ')}`
+            }, null, 2) }],
+          };
+        }
         const resolvedSchemeId = getSchemeId(scheme);
         const client = getApiClient();
         const body: Record<string, unknown> = { scheme: resolvedSchemeId, trigger_type };
@@ -54,6 +89,15 @@ export const registerNodeTools = (server: McpServer) => {
     },
     async ({ scheme, action_type, slug, description }) => {
       try {
+        const validation = await validateActionType(action_type);
+        if (!validation.valid) {
+          return {
+            content: [{ type: 'text', text: JSON.stringify({
+              success: false,
+              error: `Invalid action_type "${action_type}". Available types: ${validation.availableTypes.join(', ')}`
+            }, null, 2) }],
+          };
+        }
         const resolvedSchemeId = getSchemeId(scheme);
         const client = getApiClient();
         const body: Record<string, unknown> = { scheme: resolvedSchemeId, action_type };
