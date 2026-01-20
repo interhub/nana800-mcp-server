@@ -1,6 +1,6 @@
 {
   "name": "nana800-mcp-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP Server for nana800.io Public API - enables AI IDEs to interact with your no-code projects",
   "type": "module",
   "files": [
