@@ -6,16 +6,21 @@ import type { Node } from '../types.js';
 interface NodeTypeInfo {
   key: string;
 }
-interface NodesInfoResponse {
+interface NodesInfoData {
   trigger_types: NodeTypeInfo[];
   action_types: NodeTypeInfo[];
   node_config_info: Record<string, unknown>;
 }
-let cachedNodesInfo: NodesInfoResponse | null = null;
-const getNodesInfo = async (): Promise<NodesInfoResponse> => {
+interface NodesInfoResponse {
+  success: boolean;
+  data: NodesInfoData;
+}
+let cachedNodesInfo: NodesInfoData | null = null;
+const getNodesInfo = async (): Promise<NodesInfoData> => {
   if (cachedNodesInfo) return cachedNodesInfo;
   const client = getApiClient();
-  cachedNodesInfo = await client.get<NodesInfoResponse>('/info/nodes_info');
+  const response = await client.get<NodesInfoResponse>('/info/nodes_info');
+  cachedNodesInfo = response.data;
   return cachedNodesInfo;
 };
 const validateTriggerType = async (triggerType: string): Promise<{ valid: boolean; availableTypes: string[] }> => {
