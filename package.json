@@ -1,0 +1,46 @@
+{
+  "name": "nana800-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP Server for nana800.io Public API - enables AI IDEs to interact with your no-code projects",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "nana800-mcp": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "release": "yarn build && npm publish --access public"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "nana800",
+    "ai",
+    "cursor",
+    "claude",
+    "no-code",
+    "low-code",
+    "automation",
+    "api"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nicenana800/nana800-mcp-server"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
