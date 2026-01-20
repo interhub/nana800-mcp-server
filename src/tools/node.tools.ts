@@ -9,19 +9,17 @@ export const registerNodeTools = (server: McpServer) => {
     'Create a new trigger node in a scheme. Triggers start the execution of automation workflows.',
     {
       scheme: z.string().optional().describe('The scheme ID where the trigger will be created (uses MCP_SCHEME_ID env if not provided)'),
-      node_type: z.string().describe('Type of trigger (e.g., webhook, timer, code_action)'),
-      node_name: z.string().optional().describe('Display name for the trigger'),
-      node_description: z.string().optional().describe('Description of what this trigger does'),
-      slug: z.string().optional().describe('URL-friendly identifier for code_action triggers'),
+      trigger_type: z.string().describe('Type of trigger (e.g., WEBHOOK, INTERVAL, CODE_ACTION)'),
+      slug: z.string().optional().describe('URL-friendly identifier for the trigger'),
+      description: z.string().optional().describe('Description of what this trigger does'),
     },
-    async ({ scheme, node_type, node_name, node_description, slug }) => {
+    async ({ scheme, trigger_type, slug, description }) => {
       try {
         const resolvedSchemeId = getSchemeId(scheme);
         const client = getApiClient();
-        const body: Record<string, unknown> = { scheme: resolvedSchemeId, node_type };
-        if (node_name) body.node_name = node_name;
-        if (node_description) body.node_description = node_description;
+        const body: Record<string, unknown> = { scheme: resolvedSchemeId, trigger_type };
         if (slug) body.slug = slug;
+        if (description) body.description = description;
         const result = await client.post<Node>('/node/create/trigger', body);
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
@@ -38,17 +36,17 @@ export const registerNodeTools = (server: McpServer) => {
     'Create a new action node in a scheme. Actions perform operations like sending emails, making HTTP requests, etc.',
     {
       scheme: z.string().optional().describe('The scheme ID where the action will be created (uses MCP_SCHEME_ID env if not provided)'),
-      node_type: z.string().describe('Type of action (e.g., email, http_request, condition, telegram)'),
-      node_name: z.string().optional().describe('Display name for the action'),
-      node_description: z.string().optional().describe('Description of what this action does'),
+      action_type: z.string().describe('Type of action (e.g., REQUEST, CONDITION, TG_BOT_MESSAGE_SEND, SET_CONTEXT_PARAM_DATA)'),
+      slug: z.string().optional().describe('URL-friendly identifier for the action'),
+      description: z.string().optional().describe('Description of what this action does'),
     },
-    async ({ scheme, node_type, node_name, node_description }) => {
+    async ({ scheme, action_type, slug, description }) => {
       try {
         const resolvedSchemeId = getSchemeId(scheme);
         const client = getApiClient();
-        const body: Record<string, unknown> = { scheme: resolvedSchemeId, node_type };
-        if (node_name) body.node_name = node_name;
-        if (node_description) body.node_description = node_description;
+        const body: Record<string, unknown> = { scheme: resolvedSchemeId, action_type };
+        if (slug) body.slug = slug;
+        if (description) body.description = description;
         const result = await client.post<Node>('/node/create/action', body);
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
@@ -65,14 +63,14 @@ export const registerNodeTools = (server: McpServer) => {
     'Update an existing node properties',
     {
       node_id: z.string().describe('The unique ID of the node to update'),
-      node_name: z.string().optional().describe('New display name'),
-      node_description: z.string().optional().describe('New description'),
+      slug: z.string().optional().describe('New slug/identifier for the node'),
+      description: z.string().optional().describe('New description'),
     },
-    async ({ node_id, node_name, node_description }) => {
+    async ({ node_id, slug, description }) => {
       const client = getApiClient();
       const body: Record<string, unknown> = {};
-      if (node_name !== undefined) body.node_name = node_name;
-      if (node_description !== undefined) body.node_description = node_description;
+      if (slug !== undefined) body.slug = slug;
+      if (description !== undefined) body.description = description;
       const result = await client.put<Node>(`/node/update/${node_id}`, body);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
