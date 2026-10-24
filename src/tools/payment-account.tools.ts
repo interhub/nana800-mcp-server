@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { getApiClient } from '../api-client.js';
+import { apiPath, getApiClient } from '../api-client.js';
 import type { PaymentAccount, Transaction } from '../types.js';
 
 export const registerPaymentAccountTools = (server: McpServer) => {
@@ -12,7 +12,7 @@ export const registerPaymentAccountTools = (server: McpServer) => {
     },
     async ({ user_id }) => {
       const client = getApiClient();
-      const result = await client.delete(`/payment_account/remove_payment_account/${user_id}`);
+      const result = await client.delete(apiPath`/payment_account/remove_payment_account/${user_id}`);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
@@ -20,22 +20,20 @@ export const registerPaymentAccountTools = (server: McpServer) => {
   );
   server.tool(
     'payment_account_update',
-    'Update payment account information',
+    'Update payment account settings: name and automatic balance refill',
     {
       user_id: z.string().describe('The user ID'),
-      email: z.string().optional().describe('Payment email'),
-      first_name: z.string().optional().describe('First name'),
-      last_name: z.string().optional().describe('Last name'),
-      phone: z.string().optional().describe('Phone number'),
+      payment_account_name: z.string().optional().describe('New name of the payment account'),
+      auto_money_refill_enabled: z.boolean().optional().describe('Enable or disable automatic balance refill'),
+      auto_money_refill_amount: z.number().optional().describe('Automatic refill amount in USD'),
     },
-    async ({ user_id, email, first_name, last_name, phone }) => {
+    async ({ user_id, payment_account_name, auto_money_refill_enabled, auto_money_refill_amount }) => {
       const client = getApiClient();
       const body: Record<string, unknown> = {};
-      if (email) body.email = email;
-      if (first_name) body.first_name = first_name;
-      if (last_name) body.last_name = last_name;
-      if (phone) body.phone = phone;
-      const result = await client.post<PaymentAccount>(`/payment_account/update_payment_account/${user_id}`, body);
+      if (payment_account_name !== undefined) body.payment_account_name = payment_account_name;
+      if (auto_money_refill_enabled !== undefined) body.auto_money_refill_enabled = auto_money_refill_enabled;
+      if (auto_money_refill_amount !== undefined) body.auto_money_refill_amount = auto_money_refill_amount;
+      const result = await client.post<PaymentAccount>(apiPath`/payment_account/update_payment_account/${user_id}`, body);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
@@ -49,7 +47,7 @@ export const registerPaymentAccountTools = (server: McpServer) => {
     },
     async ({ user_id }) => {
       const client = getApiClient();
-      const result = await client.get<PaymentAccount>(`/payment_account/get_user_payment_account/${user_id}`);
+      const result = await client.get<PaymentAccount>(apiPath`/payment_account/get_user_payment_account/${user_id}`);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
@@ -63,7 +61,7 @@ export const registerPaymentAccountTools = (server: McpServer) => {
     },
     async ({ project_id }) => {
       const client = getApiClient();
-      const result = await client.get<PaymentAccount>(`/payment_account/get_project_payment_account/${project_id}`);
+      const result = await client.get<PaymentAccount>(apiPath`/payment_account/get_project_payment_account/${project_id}`);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
@@ -77,7 +75,7 @@ export const registerPaymentAccountTools = (server: McpServer) => {
     },
     async ({ payment_account_id }) => {
       const client = getApiClient();
-      const result = await client.get<Transaction[]>(`/payment_account/get_payment_account_transactions_history/${payment_account_id}`);
+      const result = await client.get<Transaction[]>(apiPath`/payment_account/get_payment_account_transactions_history/${payment_account_id}`);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };

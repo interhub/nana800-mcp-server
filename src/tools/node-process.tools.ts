@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { getApiClient } from '../api-client.js';
+import { apiPath, getApiClient } from '../api-client.js';
 import type { NodeProcess } from '../types.js';
 
 export const registerNodeProcessTools = (server: McpServer) => {
@@ -12,7 +12,7 @@ export const registerNodeProcessTools = (server: McpServer) => {
     },
     async ({ node_process_id }) => {
       const client = getApiClient();
-      const result = await client.get<NodeProcess>(`/node-process/get/${node_process_id}`);
+      const result = await client.get<NodeProcess>(apiPath`/node-process/get/${node_process_id}`);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
@@ -20,7 +20,7 @@ export const registerNodeProcessTools = (server: McpServer) => {
   );
   server.tool(
     'node_process_list_filtered',
-    'Get filtered list of node processes with pagination',
+    'Get filtered list of node processes with pagination. At least one of scheme, node or scheme_process is required',
     {
       scheme: z.string().optional().describe('Filter by scheme ID'),
       node: z.string().optional().describe('Filter by node ID'),
@@ -54,7 +54,7 @@ export const registerNodeProcessTools = (server: McpServer) => {
     },
     async ({ node_process_id }) => {
       const client = getApiClient();
-      const result = await client.delete(`/node-process/delete/${node_process_id}`);
+      const result = await client.delete(apiPath`/node-process/delete/${node_process_id}`);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };

@@ -4,10 +4,11 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const distDir = path.join(__dirname, '..', 'dist');
-if (!fs.existsSync(distDir)) {
-  fs.mkdirSync(distDir, { recursive: true });
-}
+const rootDir = path.join(__dirname, '..');
+const distDir = path.join(rootDir, 'dist');
+const { version } = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
+fs.rmSync(distDir, { recursive: true, force: true });
+fs.mkdirSync(distDir, { recursive: true });
 await esbuild.build({
   entryPoints: ['src/index.ts'],
   bundle: true,
@@ -19,5 +20,6 @@ await esbuild.build({
     js: '#!/usr/bin/env node'
   },
   external: ['@modelcontextprotocol/sdk', 'zod'],
+  define: { __PACKAGE_VERSION__: JSON.stringify(version) },
 });
 console.log('✅ Build complete');

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { getApiClient, getSchemeId } from '../api-client.js';
+import { apiPath, getApiClient, getSchemeId } from '../api-client.js';
 import type { Node } from '../types.js';
 
 interface NodeTypeInfo {
@@ -11,15 +11,14 @@ interface NodesInfoData {
   action_types: NodeTypeInfo[];
   node_config_info: Record<string, unknown>;
 }
-interface NodesInfoResponse {
-  success: boolean;
-  data: NodesInfoData;
-}
 let cachedNodesInfo: NodesInfoData | null = null;
 const getNodesInfo = async (): Promise<NodesInfoData> => {
   if (cachedNodesInfo) return cachedNodesInfo;
   const client = getApiClient();
-  const response = await client.get<NodesInfoResponse>('/info/nodes_info');
+  const response = await client.get<NodesInfoData>('/info/nodes_info');
+  if (!response.success || !Array.isArray(response.data?.trigger_types) || !Array.isArray(response.data?.action_types)) {
+    throw new Error(`Failed to load available node types: ${response.error || 'unexpected response'}`);
+  }
   cachedNodesInfo = response.data;
   return cachedNodesInfo;
 };
@@ -132,7 +131,7 @@ export const registerNodeTools = (server: McpServer) => {
       const body: Record<string, unknown> = {};
       if (slug !== undefined) body.slug = slug;
       if (description !== undefined) body.description = description;
-      const result = await client.put<Node>(`/node/update/${node_id}`, body);
+      const result = await client.put<Node>(apiPath`/node/update/${node_id}`, body);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
@@ -144,12 +143,19 @@ export const registerNodeTools = (server: McpServer) => {
     {
       node_from: z.string().describe('The source node ID (execution flows from this node)'),
       node_to: z.string().describe('The target node ID (execution flows to this node)'),
-      button_type: z.string().optional().describe('For condition nodes: specify which output to connect (e.g., "true", "false")'),
+      connection_index: z
+        .number()
+        .int()
+        .min(0)
+        .optional()
+        .describe('Output of the source node to connect. For CONDITION nodes: 0 is the "true" output, 1 is the "false" output. Default 0'),
+      edge_type: z.enum(['COMMON', 'CONDITION', 'SWITCH']).optional().describe('Type of the connection, CONDITION for outputs of condition nodes'),
     },
-    async ({ node_from, node_to, button_type }) => {
+    async ({ node_from, node_to, connection_index, edge_type }) => {
       const client = getApiClient();
       const body: Record<string, unknown> = { node_from, node_to };
-      if (button_type) body.button_type = button_type;
+      if (connection_index !== undefined) body.connection_index = connection_index;
+      if (edge_type !== undefined) body.edge_type = edge_type;
       const result = await client.put('/node/connect_nodes', body);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
@@ -179,7 +185,7 @@ export const registerNodeTools = (server: McpServer) => {
     },
     async ({ node_id }) => {
       const client = getApiClient();
-      const result = await client.get(`/node/find_existing_button_from/${node_id}`);
+      const result = await client.get(apiPath`/node/find_existing_button_from/${node_id}`);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
@@ -193,7 +199,7 @@ export const registerNodeTools = (server: McpServer) => {
     },
     async ({ node_id }) => {
       const client = getApiClient();
-      const result = await client.post<Node>(`/node/copy_node_create/${node_id}`);
+      const result = await client.post<Node>(apiPath`/node/copy_node_create/${node_id}`);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
@@ -209,7 +215,7 @@ export const registerNodeTools = (server: McpServer) => {
       try {
         const resolvedSchemeId = getSchemeId(scheme_id);
         const client = getApiClient();
-        const result = await client.get(`/node/scheme_node_edges_list/${resolvedSchemeId}`);
+        const result = await client.get(apiPath`/node/scheme_node_edges_list/${resolvedSchemeId}`);
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };
@@ -228,7 +234,7 @@ export const registerNodeTools = (server: McpServer) => {
     },
     async ({ node_id }) => {
       const client = getApiClient();
-      const result = await client.get<Node>(`/node/get/${node_id}`);
+      const result = await client.get<Node>(apiPath`/node/get/${node_id}`);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
@@ -251,7 +257,7 @@ export const registerNodeTools = (server: McpServer) => {
           content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'Invalid JSON in config' }, null, 2) }],
         };
       }
-      const result = await client.put<Node>(`/node/update_config/${node_id}`, parsedConfig);
+      const result = await client.put<Node>(apiPath`/node/update_config/${node_id}`, parsedConfig);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
@@ -267,7 +273,7 @@ export const registerNodeTools = (server: McpServer) => {
       try {
         const resolvedSchemeId = getSchemeId(scheme_id);
         const client = getApiClient();
-        const result = await client.get<Node[]>(`/node/scheme_list/${resolvedSchemeId}`);
+        const result = await client.get<Node[]>(apiPath`/node/scheme_list/${resolvedSchemeId}`);
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };
@@ -286,7 +292,7 @@ export const registerNodeTools = (server: McpServer) => {
     },
     async ({ node_id }) => {
       const client = getApiClient();
-      const result = await client.delete(`/node/delete/${node_id}`);
+      const result = await client.delete(apiPath`/node/delete/${node_id}`);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };

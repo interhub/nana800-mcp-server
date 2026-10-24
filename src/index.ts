@@ -7,8 +7,10 @@ import { registerNodeProcessTools } from './tools/node-process.tools.js';
 import { registerSchemeProcessTools } from './tools/scheme-process.tools.js';
 import { registerPaymentAccountTools } from './tools/payment-account.tools.js';
 
+declare const __PACKAGE_VERSION__: string;
+
 const SERVER_NAME = 'nana800-mcp-server';
-const SERVER_VERSION = '1.0.0';
+const SERVER_VERSION = __PACKAGE_VERSION__;
 
 const main = async () => {
   const apiKey = process.env.MCP_API_KEY;

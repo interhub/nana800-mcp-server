@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { getApiClient, getProjectId } from '../api-client.js';
+import { apiPath, getApiClient, getProjectId } from '../api-client.js';
 import type { Project } from '../types.js';
 
 export const registerProjectTools = (server: McpServer) => {
@@ -30,7 +30,7 @@ export const registerProjectTools = (server: McpServer) => {
       try {
         const resolvedProjectId = getProjectId(project_id);
         const client = getApiClient();
-        const result = await client.get<Project>(`/project/get/${resolvedProjectId}`);
+        const result = await client.get<Project>(apiPath`/project/get/${resolvedProjectId}`);
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };
@@ -49,7 +49,7 @@ export const registerProjectTools = (server: McpServer) => {
     },
     async ({ payment_account_id }) => {
       const client = getApiClient();
-      const result = await client.get<Project[]>(`/project/get_list_by_payment_account/${payment_account_id}`);
+      const result = await client.get<Project[]>(apiPath`/project/get_list_by_payment_account/${payment_account_id}`);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
@@ -70,7 +70,7 @@ export const registerProjectTools = (server: McpServer) => {
         const body: Record<string, unknown> = {};
         if (project_name) body.project_name = project_name;
         if (project_slug) body.project_slug = project_slug;
-        const result = await client.put<Project>(`/project/update/${resolvedProjectId}`, body);
+        const result = await client.put<Project>(apiPath`/project/update/${resolvedProjectId}`, body);
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };
@@ -91,7 +91,7 @@ export const registerProjectTools = (server: McpServer) => {
       try {
         const resolvedProjectId = getProjectId(project_id);
         const client = getApiClient();
-        const result = await client.delete(`/project/delete/${resolvedProjectId}`);
+        const result = await client.delete(apiPath`/project/delete/${resolvedProjectId}`);
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };

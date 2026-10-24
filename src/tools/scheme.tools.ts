@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { getApiClient, getProjectId, getSchemeId } from '../api-client.js';
+import { apiPath, getApiClient, getProjectId, getSchemeId } from '../api-client.js';
 import type { Scheme } from '../types.js';
 
 export const registerSchemeTools = (server: McpServer) => {
@@ -32,18 +32,18 @@ export const registerSchemeTools = (server: McpServer) => {
     {
       scheme_id: z.string().optional().describe('The unique ID of the scheme to update (uses MCP_SCHEME_ID env if not provided)'),
       scheme_name: z.string().optional().describe('New name for the scheme'),
-      scheme_description: z.string().optional().describe('New description for the scheme'),
-      is_active: z.boolean().optional().describe('Enable or disable the scheme'),
+      description: z.string().optional().describe('New description for the scheme'),
+      enabled: z.boolean().optional().describe('Enable or disable the scheme'),
     },
-    async ({ scheme_id, scheme_name, scheme_description, is_active }) => {
+    async ({ scheme_id, scheme_name, description, enabled }) => {
       try {
         const resolvedSchemeId = getSchemeId(scheme_id);
         const client = getApiClient();
         const body: Record<string, unknown> = {};
         if (scheme_name !== undefined) body.scheme_name = scheme_name;
-        if (scheme_description !== undefined) body.scheme_description = scheme_description;
-        if (is_active !== undefined) body.is_active = is_active;
-        const result = await client.put<Scheme>(`/scheme/update/${resolvedSchemeId}`, body);
+        if (description !== undefined) body.description = description;
+        if (enabled !== undefined) body.enabled = enabled;
+        const result = await client.put<Scheme>(apiPath`/scheme/update/${resolvedSchemeId}`, body);
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };
@@ -64,7 +64,7 @@ export const registerSchemeTools = (server: McpServer) => {
       try {
         const resolvedSchemeId = getSchemeId(scheme_id);
         const client = getApiClient();
-        const result = await client.get<Scheme>(`/scheme/get/${resolvedSchemeId}`);
+        const result = await client.get<Scheme>(apiPath`/scheme/get/${resolvedSchemeId}`);
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };
@@ -85,7 +85,7 @@ export const registerSchemeTools = (server: McpServer) => {
       try {
         const resolvedProjectId = getProjectId(project_id);
         const client = getApiClient();
-        const result = await client.get<Scheme[]>(`/scheme/project_list/${resolvedProjectId}`);
+        const result = await client.get<Scheme[]>(apiPath`/scheme/project_list/${resolvedProjectId}`);
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };
@@ -106,7 +106,7 @@ export const registerSchemeTools = (server: McpServer) => {
       try {
         const resolvedSchemeId = getSchemeId(scheme_id);
         const client = getApiClient();
-        const result = await client.get(`/scheme/context_type/${resolvedSchemeId}`);
+        const result = await client.get(apiPath`/scheme/context_type/${resolvedSchemeId}`);
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };
@@ -127,7 +127,7 @@ export const registerSchemeTools = (server: McpServer) => {
       try {
         const resolvedSchemeId = getSchemeId(scheme_id);
         const client = getApiClient();
-        const result = await client.get(`/scheme/swagger_json/${resolvedSchemeId}`);
+        const result = await client.get(apiPath`/scheme/swagger_json/${resolvedSchemeId}`);
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };
@@ -148,7 +148,7 @@ export const registerSchemeTools = (server: McpServer) => {
       try {
         const resolvedSchemeId = getSchemeId(scheme_id);
         const client = getApiClient();
-        const result = await client.get(`/scheme/export/${resolvedSchemeId}`);
+        const result = await client.get(apiPath`/scheme/export/${resolvedSchemeId}`);
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };
@@ -178,7 +178,7 @@ export const registerSchemeTools = (server: McpServer) => {
             content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'Invalid JSON in nodes_list' }, null, 2) }],
           };
         }
-        const result = await client.post(`/scheme/import/${resolvedSchemeId}`, { nodes_list: parsedNodes });
+        const result = await client.post(apiPath`/scheme/import/${resolvedSchemeId}`, { nodes_list: parsedNodes });
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };
@@ -199,7 +199,7 @@ export const registerSchemeTools = (server: McpServer) => {
       try {
         const resolvedSchemeId = getSchemeId(scheme_id);
         const client = getApiClient();
-        const result = await client.delete(`/scheme/delete/${resolvedSchemeId}`);
+        const result = await client.delete(apiPath`/scheme/delete/${resolvedSchemeId}`);
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };

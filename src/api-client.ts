@@ -1,7 +1,9 @@
 import type { ApiResponse } from './types.js';
 
-const API_BASE_URL = 'https://api.nana800.io';
+const API_BASE_URL = (process.env.MCP_API_URL || 'https://api.nana800.io').replace(/\/+$/, '');
 const API_KEY_HEADER = 'x-nana-api-key';
+const REQUEST_TIMEOUT_MS = 30000;
+const MAX_ERROR_TEXT_LENGTH = 2000;
 
 const DEFAULT_PROJECT_ID = process.env.MCP_PROJECT_ID || '';
 const DEFAULT_SCHEME_ID = process.env.MCP_SCHEME_ID || '';
@@ -22,95 +24,76 @@ export const getSchemeId = (providedId?: string): string => {
   return id;
 };
 
+/**
+ * Builds an API path and encodes every interpolated value as one path segment,
+ * so an id like "../other" can not point the request to another endpoint
+ */
+export const apiPath = (strings: TemplateStringsArray, ...values: string[]): string => {
+  return strings.reduce((path, part, index) => path + part + (index < values.length ? encodeURIComponent(values[index]) : ''), '');
+};
+
+type RequestOptions = {
+  query?: Record<string, string | number | undefined>;
+  body?: Record<string, unknown>;
+};
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.name === 'TimeoutError' || error.name === 'AbortError' ? `request timed out after ${REQUEST_TIMEOUT_MS / 1000}s` : error.message;
+  }
+  return 'Unknown error';
+};
+
 export class ApiClient {
   private apiKey: string;
   constructor(apiKey: string) {
     this.apiKey = apiKey;
   }
-  async get<T>(path: string, queryParams?: Record<string, string | number | undefined>): Promise<ApiResponse<T>> {
+  get<T>(path: string, queryParams?: Record<string, string | number | undefined>): Promise<ApiResponse<T>> {
+    return this.request<T>('GET', path, { query: queryParams });
+  }
+  post<T>(path: string, body?: Record<string, unknown>): Promise<ApiResponse<T>> {
+    return this.request<T>('POST', path, { body });
+  }
+  put<T>(path: string, body?: Record<string, unknown>): Promise<ApiResponse<T>> {
+    return this.request<T>('PUT', path, { body });
+  }
+  delete<T>(path: string): Promise<ApiResponse<T>> {
+    return this.request<T>('DELETE', path, {});
+  }
+  private async request<T>(method: string, path: string, { query, body }: RequestOptions): Promise<ApiResponse<T>> {
     try {
       const url = new URL(`${API_BASE_URL}${path}`);
-      if (queryParams) {
-        Object.entries(queryParams).forEach(([key, value]) => {
+      if (query) {
+        Object.entries(query).forEach(([key, value]) => {
           if (value !== undefined) {
             url.searchParams.append(key, String(value));
           }
         });
       }
       const response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: {
-          [API_KEY_HEADER]: this.apiKey,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
-      }
-      const data = await response.json() as T;
-      return { success: true, data };
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
-  }
-  async post<T>(path: string, body?: Record<string, unknown>): Promise<ApiResponse<T>> {
-    try {
-      const response = await fetch(`${API_BASE_URL}${path}`, {
-        method: 'POST',
+        method,
         headers: {
           [API_KEY_HEADER]: this.apiKey,
           'Content-Type': 'application/json',
         },
         body: body ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
+      const text = await response.text();
       if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+        return { success: false, error: `HTTP ${response.status}: ${text.slice(0, MAX_ERROR_TEXT_LENGTH)}` };
       }
-      const data = await response.json() as T;
-      return { success: true, data };
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
-  }
-  async put<T>(path: string, body?: Record<string, unknown>): Promise<ApiResponse<T>> {
-    try {
-      const response = await fetch(`${API_BASE_URL}${path}`, {
-        method: 'PUT',
-        headers: {
-          [API_KEY_HEADER]: this.apiKey,
-          'Content-Type': 'application/json',
-        },
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      if (!text) {
+        return { success: true, data: null as T };
       }
-      const data = await response.json() as T;
-      return { success: true, data };
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
-  }
-  async delete<T>(path: string): Promise<ApiResponse<T>> {
-    try {
-      const response = await fetch(`${API_BASE_URL}${path}`, {
-        method: 'DELETE',
-        headers: {
-          [API_KEY_HEADER]: this.apiKey,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      try {
+        return { success: true, data: JSON.parse(text) as T };
+      } catch {
+        return { success: true, data: text as T };
       }
-      const data = await response.json() as T;
-      return { success: true, data };
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      return { success: false, error: getErrorMessage(error) };
     }
   }
 }

@@ -85,6 +85,9 @@ Add to your extension settings:
 | `MCP_API_KEY` | Yes | Your nana800.io API key |
 | `MCP_PROJECT_ID` | No | Default project ID (can be overridden per tool call) |
 | `MCP_SCHEME_ID` | No | Default scheme ID (can be overridden per tool call) |
+| `MCP_API_URL` | No | API origin, `https://api.nana800.io` by default |
+
+Every API request has a 30 second timeout. Requires Node.js 18 or newer.
 
 ## Available Tools
 
@@ -105,7 +108,7 @@ Add to your extension settings:
 | `scheme_create` | Create a new scheme (workflow) |
 | `scheme_get` | Get scheme details |
 | `scheme_list_by_project` | List all schemes in a project |
-| `scheme_update` | Update scheme properties |
+| `scheme_update` | Update scheme name, description and enable or disable it |
 | `scheme_delete` | Delete a scheme |
 | `scheme_export` | Export scheme as JSON |
 | `scheme_import` | Import nodes into a scheme |
@@ -116,6 +119,7 @@ Add to your extension settings:
 
 | Tool | Description |
 |------|-------------|
+| `get_nodes_info` | List available trigger and action types with their configuration |
 | `node_create_trigger` | Create a trigger node |
 | `node_create_action` | Create an action node |
 | `node_get` | Get node details |
@@ -123,7 +127,7 @@ Add to your extension settings:
 | `node_update` | Update node properties |
 | `node_update_config` | Update node configuration |
 | `node_delete` | Delete a node |
-| `node_connect` | Connect two nodes |
+| `node_connect` | Connect two nodes (for condition nodes `connection_index` 0 is the "true" output, 1 is the "false" output) |
 | `node_disconnect` | Disconnect two nodes |
 | `node_copy` | Copy a node |
 | `node_get_scheme_edges` | Get all connections in a scheme |
@@ -134,7 +138,7 @@ Add to your extension settings:
 | Tool | Description |
 |------|-------------|
 | `node_process_get` | Get node process details |
-| `node_process_list_filtered` | List node processes with filters |
+| `node_process_list_filtered` | List node processes, filter by scheme, node or scheme process is required |
 | `node_process_delete` | Delete a node process record |
 
 ### Scheme Process Management
@@ -142,7 +146,7 @@ Add to your extension settings:
 | Tool | Description |
 |------|-------------|
 | `scheme_process_get` | Get scheme process details |
-| `scheme_process_list_filtered` | List scheme processes with filters |
+| `scheme_process_list_filtered` | List scheme processes, filter by scheme or project is required |
 | `scheme_process_delete` | Delete a scheme process record |
 
 ### Payment Account Management
@@ -151,7 +155,7 @@ Add to your extension settings:
 |------|-------------|
 | `payment_account_get_by_user` | Get payment account by user ID |
 | `payment_account_get_by_project` | Get payment account by project ID |
-| `payment_account_update` | Update payment account info |
+| `payment_account_update` | Update payment account name and automatic balance refill |
 | `payment_account_remove` | Remove payment account |
 | `payment_account_get_transactions` | Get transaction history |
 
@@ -168,7 +172,7 @@ Once configured, you can ask your AI assistant things like:
 
 ## API Documentation
 
-Full API documentation available at: [https://api.nana800.io/docs](https://api.nana800.io/docs)
+Full API documentation available at: [https://api.nana800.io/public-api](https://api.nana800.io/public-api)
 
 ## License
 
