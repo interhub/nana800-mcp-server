@@ -31,7 +31,8 @@ Add to your `~/.cursor/mcp.json`:
       "env": {
         "MCP_API_KEY": "your_api_key_here",
         "MCP_PROJECT_ID": "your_default_project_id",
-        "MCP_SCHEME_ID": "your_default_scheme_id"
+        "MCP_SCHEME_ID": "your_default_scheme_id",
+        "MCP_ANALYTICS_ORG_ID": "your_default_analytics_org_id"
       }
     }
   }
@@ -51,7 +52,8 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
       "env": {
         "MCP_API_KEY": "your_api_key_here",
         "MCP_PROJECT_ID": "your_default_project_id",
-        "MCP_SCHEME_ID": "your_default_scheme_id"
+        "MCP_SCHEME_ID": "your_default_scheme_id",
+        "MCP_ANALYTICS_ORG_ID": "your_default_analytics_org_id"
       }
     }
   }
@@ -71,7 +73,8 @@ Add to your extension settings:
       "env": {
         "MCP_API_KEY": "your_api_key_here",
         "MCP_PROJECT_ID": "your_default_project_id",
-        "MCP_SCHEME_ID": "your_default_scheme_id"
+        "MCP_SCHEME_ID": "your_default_scheme_id",
+        "MCP_ANALYTICS_ORG_ID": "your_default_analytics_org_id"
       }
     }
   }
@@ -86,6 +89,8 @@ Add to your extension settings:
 | `MCP_PROJECT_ID` | No | Default project ID (can be overridden per tool call) |
 | `MCP_SCHEME_ID` | No | Default scheme ID (can be overridden per tool call) |
 | `MCP_API_URL` | No | API origin, `https://api.nana800.io` by default |
+| `MCP_ANALYTICS_ORG_ID` | No | Default analytics org ID (can be overridden per tool call) |
+| `MCP_ANALYTICS_API_URL` | No | Analytics API origin, `https://api.analytics.nana800.io` by default |
 
 Every API request has a 30 second timeout. Requires Node.js 18 or newer.
 
@@ -159,6 +164,32 @@ Every API request has a 30 second timeout. Requires Node.js 18 or newer.
 | `payment_account_remove` | Remove payment account |
 | `payment_account_get_transactions` | Get transaction history |
 
+### Analytics Data Export
+
+The API key user must be a member of the analytics org. Exports run in the background and the tools return only the status and a download link, never the rows.
+
+| Tool | Description |
+|------|-------------|
+| `analytics_projects_list` | List app projects of an analytics org |
+| `analytics_event_types_list` | List tracked event types of an app project, for export filters |
+| `analytics_export_create` | Start an export of events (`EVENTS`), events of one user (`USER_EVENTS`) or users (`USERS`) to CSV or JSONL |
+| `analytics_export_status` | Get export status (`QUEUED`, `RUNNING`, `DONE`, `FAILED`) and the download link when it is done |
+| `analytics_exports_list` | List the 20 newest exports of an org |
+
+Export limits:
+
+- Up to 1,000,000 rows per file, `is_truncated` is `true` when more rows matched
+- One active export per org, 10 exports per org per hour, exports started with an API key: one per 10 minutes per org
+- Poll `analytics_export_status` not more often than once per ~10 seconds
+- The download link is valid for 15 minutes, call `analytics_export_status` again for a fresh one
+- Files are deleted after 7 days
+
+The file is served gzipped (`Content-Encoding: gzip`). A browser saves plain CSV or JSONL, from a shell use:
+
+```bash
+curl --compressed -o export.csv "<download_url>"
+```
+
 ## Usage Examples
 
 Once configured, you can ask your AI assistant things like:
@@ -169,6 +200,7 @@ Once configured, you can ask your AI assistant things like:
 - "Connect the webhook trigger to the email action"
 - "Export the scheme configuration"
 - "What processes are currently running?"
+- "Export all purchase events of the last week to CSV and give me the download link"
 
 ## API Documentation
 

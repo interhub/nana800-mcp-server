@@ -1,12 +1,14 @@
 import type { ApiResponse } from './types.js';
 
 const API_BASE_URL = (process.env.MCP_API_URL || 'https://api.nana800.io').replace(/\/+$/, '');
+const ANALYTICS_API_BASE_URL = (process.env.MCP_ANALYTICS_API_URL || 'https://api.analytics.nana800.io').replace(/\/+$/, '');
 const API_KEY_HEADER = 'x-nana-api-key';
 const REQUEST_TIMEOUT_MS = 30000;
 const MAX_ERROR_TEXT_LENGTH = 2000;
 
 const DEFAULT_PROJECT_ID = process.env.MCP_PROJECT_ID || '';
 const DEFAULT_SCHEME_ID = process.env.MCP_SCHEME_ID || '';
+const DEFAULT_ANALYTICS_ORG_ID = process.env.MCP_ANALYTICS_ORG_ID || '';
 
 export const getProjectId = (providedId?: string): string => {
   const id = providedId || DEFAULT_PROJECT_ID;
@@ -20,6 +22,14 @@ export const getSchemeId = (providedId?: string): string => {
   const id = providedId || DEFAULT_SCHEME_ID;
   if (!id) {
     throw new Error('scheme_id is required. Provide it as parameter or set MCP_SCHEME_ID env variable');
+  }
+  return id;
+};
+
+export const getAnalyticsOrgId = (providedId?: string): string => {
+  const id = providedId || DEFAULT_ANALYTICS_ORG_ID;
+  if (!id) {
+    throw new Error('org_id is required. Provide it as parameter or set MCP_ANALYTICS_ORG_ID env variable');
   }
   return id;
 };
@@ -46,8 +56,10 @@ const getErrorMessage = (error: unknown): string => {
 
 export class ApiClient {
   private apiKey: string;
-  constructor(apiKey: string) {
+  private baseUrl: string;
+  constructor(apiKey: string, baseUrl: string) {
     this.apiKey = apiKey;
+    this.baseUrl = baseUrl;
   }
   get<T>(path: string, queryParams?: Record<string, string | number | undefined>): Promise<ApiResponse<T>> {
     return this.request<T>('GET', path, { query: queryParams });
@@ -63,7 +75,7 @@ export class ApiClient {
   }
   private async request<T>(method: string, path: string, { query, body }: RequestOptions): Promise<ApiResponse<T>> {
     try {
-      const url = new URL(`${API_BASE_URL}${path}`);
+      const url = new URL(`${this.baseUrl}${path}`);
       if (query) {
         Object.entries(query).forEach(([key, value]) => {
           if (value !== undefined) {
@@ -99,14 +111,26 @@ export class ApiClient {
 }
 
 let apiClientInstance: ApiClient | null = null;
+let analyticsApiClientInstance: ApiClient | null = null;
+
+const getApiKey = (): string => {
+  const apiKey = process.env.MCP_API_KEY;
+  if (!apiKey) {
+    throw new Error('MCP_API_KEY environment variable is not set');
+  }
+  return apiKey;
+};
 
 export const getApiClient = (): ApiClient => {
   if (!apiClientInstance) {
-    const apiKey = process.env.MCP_API_KEY;
-    if (!apiKey) {
-      throw new Error('MCP_API_KEY environment variable is not set');
-    }
-    apiClientInstance = new ApiClient(apiKey);
+    apiClientInstance = new ApiClient(getApiKey(), API_BASE_URL);
   }
   return apiClientInstance;
+};
+
+export const getAnalyticsApiClient = (): ApiClient => {
+  if (!analyticsApiClientInstance) {
+    analyticsApiClientInstance = new ApiClient(getApiKey(), ANALYTICS_API_BASE_URL);
+  }
+  return analyticsApiClientInstance;
 };
