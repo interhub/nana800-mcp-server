@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { apiPath, getAnalyticsApiClient, getAnalyticsOrgId } from '../api-client.js';
-import type { AnalyticsAppProject, AnalyticsEventType, AnalyticsExportJob, AnalyticsExportWithDownloadUrl } from '../types.js';
+import { apiPath, getAnalyticsApiClient, getAnalyticsOrgId, getApiClient } from '../api-client.js';
+import type { AnalyticsAppProject, AnalyticsEventType, AnalyticsExportJob, AnalyticsExportWithDownloadUrl, AnalyticsOrg } from '../types.js';
 
 const MAX_EVENT_TYPE_FILTERS = 20;
 const MAX_CONDITIONS_PER_FILTER = 20;
@@ -14,6 +14,10 @@ const EXPORT_FLOW_HINT =
   'When DONE, download_url is a direct link valid for 15 minutes (call analytics_export_status again for a fresh one). ' +
   'The file is served gzipped with Content-Encoding: gzip: a browser saves plain CSV or JSONL, from a shell use curl --compressed -o file.csv "<download_url>". ' +
   'Files are deleted 7 days after creation. No rows are returned through MCP, only the status and the link.';
+
+const ISO_DATE_TIME_ERROR = 'must be an ISO 8601 date-time with a timezone, e.g. 2026-10-01T00:00:00.000Z or 2026-10-01T00:00:00+03:00. Relative values like "last 7 days" are not accepted, compute the exact date-time';
+
+const isoDateTimeSchema = z.iso.datetime({ offset: true, error: ISO_DATE_TIME_ERROR });
 
 const conditionSchema = z.object({
   param_name: z.string().max(MAX_CONDITION_VALUE_LENGTH).describe('Property name'),
@@ -54,10 +58,33 @@ const pickUserFilter = (userFilter: UserFilter): Record<string, unknown> => {
 
 export const registerAnalyticsExportTools = (server: McpServer) => {
   server.tool(
+    'analytics_orgs_list',
+    'List analytics orgs the API key owner is a member of (_id, org_name). Use the org _id as org_id in the other analytics tools or set it as MCP_ANALYTICS_ORG_ID. In the analytics web app the org ID is the "org" parameter of the page URL',
+    {},
+    async () => {
+      try {
+        const mainClient = getApiClient();
+        const userResult = await mainClient.get<{ _id?: string }>('/user/own');
+        if (!userResult.success || !userResult.data?._id) {
+          throw new Error(`Failed to get the API key owner: ${userResult.error || 'unexpected response'}`);
+        }
+        const client = getAnalyticsApiClient();
+        const result = await client.get<AnalyticsOrg[]>(apiPath`/analytics_org_access/get_orgs_of_user/${userResult.data._id}`);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, null, 2) }],
+        };
+      }
+    }
+  );
+  server.tool(
     'analytics_projects_list',
-    'List app projects of an analytics org. Use the project _id as app_project_id in analytics_event_types_list and analytics_export_create',
+    'List app projects of an analytics org (org_id from analytics_orgs_list or MCP_ANALYTICS_ORG_ID). Use the project _id as app_project_id in analytics_event_types_list and analytics_export_create',
     {
-      org_id: z.string().optional().describe('The analytics org ID (uses MCP_ANALYTICS_ORG_ID env if not provided)'),
+      org_id: z.string().optional().describe('The analytics org ID from analytics_orgs_list (uses MCP_ANALYTICS_ORG_ID env if not provided)'),
     },
     async ({ org_id }) => {
       try {
@@ -90,19 +117,19 @@ export const registerAnalyticsExportTools = (server: McpServer) => {
   );
   server.tool(
     'analytics_export_create',
-    'Start a file export of analytics data: EVENTS (events of the org or project), USER_EVENTS (events of one user, user_filter.analytics_user_ids must have exactly one ID) or USERS (users with their properties). ' +
+    'Start a file export of analytics data of an org (org_id from analytics_orgs_list or MCP_ANALYTICS_ORG_ID): EVENTS (events of the org or project), USER_EVENTS (events of one user, user_filter.analytics_user_ids must have exactly one ID) or USERS (users with their properties). ' +
       'Up to 1,000,000 rows per file, is_truncated is true when more rows matched. ' +
       'Limits per org: one active export at a time (HTTP 409 analytics_export_already_running), 10 exports per hour (HTTP 429 analytics_export_hourly_limit), exports started with an API key: one per 10 minutes (HTTP 429 analytics_export_api_key_interval). ' +
       'HTTP 400 analytics_export_invalid_filter means the filter does not fit the export kind, HTTP 403 means the API key user is not a member of the org. ' +
       EXPORT_FLOW_HINT,
     {
-      org_id: z.string().optional().describe('The analytics org ID (uses MCP_ANALYTICS_ORG_ID env if not provided)'),
+      org_id: z.string().optional().describe('The analytics org ID from analytics_orgs_list (uses MCP_ANALYTICS_ORG_ID env if not provided)'),
       app_project_id: z.string().optional().describe('The analytics app project ID, all projects of the org if not provided'),
       export_kind: z.enum(['EVENTS', 'USER_EVENTS', 'USERS']).describe('What to export'),
       file_format: z.enum(['CSV', 'JSONL']).optional().describe('File format, CSV by default. JSONL is one JSON object per line'),
       csv_delimiter: z.enum([',', ';']).optional().describe('CSV column delimiter, comma by default'),
-      time_from: z.string().optional().describe('EVENTS and USER_EVENTS only: events from this time, ISO 8601 (e.g. 2026-10-01T00:00:00.000Z)'),
-      time_to: z.string().optional().describe('EVENTS and USER_EVENTS only: events up to this time, ISO 8601'),
+      time_from: isoDateTimeSchema.optional().describe('EVENTS and USER_EVENTS only: events from this time, ISO 8601 date-time with a timezone (e.g. 2026-10-01T00:00:00.000Z)'),
+      time_to: isoDateTimeSchema.optional().describe('EVENTS and USER_EVENTS only: events up to this time, ISO 8601 date-time with a timezone (e.g. 2026-10-08T00:00:00.000Z)'),
       event_types_filter: z
         .array(eventTypeFilterSchema)
         .max(MAX_EVENT_TYPE_FILTERS)
@@ -165,9 +192,9 @@ export const registerAnalyticsExportTools = (server: McpServer) => {
   );
   server.tool(
     'analytics_exports_list',
-    'List the 20 newest analytics exports of an org, newest first, without download links. Call analytics_export_status with an export _id to get its download link',
+    'List the 20 newest analytics exports of an org (org_id from analytics_orgs_list or MCP_ANALYTICS_ORG_ID), newest first, without download links. Call analytics_export_status with an export _id to get its download link',
     {
-      org_id: z.string().optional().describe('The analytics org ID (uses MCP_ANALYTICS_ORG_ID env if not provided)'),
+      org_id: z.string().optional().describe('The analytics org ID from analytics_orgs_list (uses MCP_ANALYTICS_ORG_ID env if not provided)'),
       app_project_id: z.string().optional().describe('Only exports of this analytics app project'),
     },
     async ({ org_id, app_project_id }) => {

@@ -89,7 +89,7 @@ Add to your extension settings:
 | `MCP_PROJECT_ID` | No | Default project ID (can be overridden per tool call) |
 | `MCP_SCHEME_ID` | No | Default scheme ID (can be overridden per tool call) |
 | `MCP_API_URL` | No | API origin, `https://api.nana800.io` by default |
-| `MCP_ANALYTICS_ORG_ID` | No | Default analytics org ID (can be overridden per tool call) |
+| `MCP_ANALYTICS_ORG_ID` | No | Default analytics org ID (can be overridden per tool call), get it with `analytics_orgs_list` or from the `org` parameter in the analytics page URL |
 | `MCP_ANALYTICS_API_URL` | No | Analytics API origin, `https://api.analytics.nana800.io` by default |
 
 Every API request has a 30 second timeout. Requires Node.js 18 or newer.
@@ -166,10 +166,11 @@ Every API request has a 30 second timeout. Requires Node.js 18 or newer.
 
 ### Analytics Data Export
 
-The API key user must be a member of the analytics org. Exports run in the background and the tools return only the status and a download link, never the rows.
+The API key user must be a member of the analytics org. The org ID (`org_id`) comes from `analytics_orgs_list`, the `MCP_ANALYTICS_ORG_ID` env variable or the `org` parameter in the analytics page URL. Exports run in the background and the tools return only the status and a download link, never the rows.
 
 | Tool | Description |
 |------|-------------|
+| `analytics_orgs_list` | List analytics orgs the API key owner is a member of |
 | `analytics_projects_list` | List app projects of an analytics org |
 | `analytics_event_types_list` | List tracked event types of an app project, for export filters |
 | `analytics_export_create` | Start an export of events (`EVENTS`), events of one user (`USER_EVENTS`) or users (`USERS`) to CSV or JSONL |
@@ -180,6 +181,7 @@ Export limits:
 
 - Up to 1,000,000 rows per file, `is_truncated` is `true` when more rows matched
 - One active export per org, 10 exports per org per hour, exports started with an API key: one per 10 minutes per org
+- `time_from` and `time_to` are ISO 8601 date-times with a timezone, e.g. `2026-10-01T00:00:00.000Z`
 - Poll `analytics_export_status` not more often than once per ~10 seconds
 - The download link is valid for 15 minutes, call `analytics_export_status` again for a fresh one
 - Files are deleted after 7 days

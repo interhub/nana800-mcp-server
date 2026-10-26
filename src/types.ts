@@ -70,6 +70,12 @@ export type Transaction = {
   created_at?: string;
 };
 
+export type AnalyticsOrg = {
+  _id: string;
+  org_name: string;
+  created_time?: string;
+};
+
 export type AnalyticsAppProject = {
   _id: string;
   project_slug: string;
