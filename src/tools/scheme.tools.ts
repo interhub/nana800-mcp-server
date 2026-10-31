@@ -119,7 +119,8 @@ export const registerSchemeTools = (server: McpServer) => {
   );
   server.tool(
     'scheme_get_swagger_json',
-    'Get Swagger/OpenAPI JSON specification for a scheme',
+    'Get the OpenAPI 3 document of the scheme webhooks, built from the current blocks: the base URL, every webhook path and method, path params, the query, header and body fields the connected blocks read, and the answers of the connected response blocks. ' +
+      'Webhooks that get no requests (empty or wrong path, wrong method, taken by an earlier webhook) are listed in x-nana800-broken-webhooks with the reason. Block secrets are masked for project readers',
     {
       scheme_id: z.string().optional().describe('The unique ID of the scheme (uses MCP_SCHEME_ID env if not provided)'),
     },
@@ -127,7 +128,7 @@ export const registerSchemeTools = (server: McpServer) => {
       try {
         const resolvedSchemeId = getSchemeId(scheme_id);
         const client = getApiClient();
-        const result = await client.get(apiPath`/scheme/swagger_json/${resolvedSchemeId}`);
+        const result = await client.get(apiPath`/scheme/openapi/${resolvedSchemeId}`);
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };

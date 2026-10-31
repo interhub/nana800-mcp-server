@@ -1,0 +1,265 @@
+{
+  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/mcpb/main/schemas/mcpb-manifest-v0.3.schema.json",
+  "manifest_version": "0.3",
+  "name": "nana800-mcp-server",
+  "display_name": "nana800",
+  "version": "1.2.1",
+  "description": "Build and manage nana800.io no-code workflows: projects, blocks, run history and analytics exports",
+  "long_description": "MCP server for [nana800.io](https://nana800.io/en/), a no-code platform for backend logic and workflow automation. Workflows (schemes) are built from trigger and action blocks (nodes): webhooks, timers, HTTP requests, Telegram, Google Sheets, GPT and other integrations.\n\nWith it the assistant creates projects and schemes, adds, configures and connects blocks, exports and imports schemes as JSON, reads the OpenAPI document of scheme webhooks, reads the run history of schemes and blocks, reads the payment account and its transactions, and exports analytics events and users to CSV or JSON Lines files.\n\nNeeds a nana800.io API key from https://cloud.nana800.io/settings. Delete and remove tools can not be undone.",
+  "author": {
+    "name": "Bekender",
+    "url": "https://nana800.io/en/"
+  },
+  "homepage": "https://nana800.io/en/",
+  "documentation": "https://nana800.gitbook.io/doc",
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/dist/index.js"
+      ],
+      "env": {
+        "MCP_API_KEY": "${user_config.api_key}",
+        "MCP_PROJECT_ID": "${user_config.project_id}",
+        "MCP_SCHEME_ID": "${user_config.scheme_id}",
+        "MCP_ANALYTICS_ORG_ID": "${user_config.analytics_org_id}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "project_create",
+      "description": "Create a project, a container for schemes"
+    },
+    {
+      "name": "project_get",
+      "description": "Get a project by ID"
+    },
+    {
+      "name": "project_list_by_payment_account",
+      "description": "List projects of a payment account"
+    },
+    {
+      "name": "project_update",
+      "description": "Change project name or slug"
+    },
+    {
+      "name": "project_delete",
+      "description": "Delete a project with all its schemes (irreversible)"
+    },
+    {
+      "name": "scheme_create",
+      "description": "Create a scheme in a project"
+    },
+    {
+      "name": "scheme_update",
+      "description": "Change name and description, enable or disable a scheme"
+    },
+    {
+      "name": "scheme_get",
+      "description": "Get a scheme by ID"
+    },
+    {
+      "name": "scheme_list_by_project",
+      "description": "List schemes of a project"
+    },
+    {
+      "name": "scheme_get_context_type",
+      "description": "Get the data type of the scheme context"
+    },
+    {
+      "name": "scheme_get_swagger_json",
+      "description": "Get the OpenAPI 3 document of the scheme webhooks: paths, methods, fields the blocks read, answers, and webhooks that get no requests with the reason"
+    },
+    {
+      "name": "scheme_export",
+      "description": "Export scheme nodes and connections as JSON"
+    },
+    {
+      "name": "scheme_import",
+      "description": "Import nodes into a scheme from exported JSON"
+    },
+    {
+      "name": "scheme_delete",
+      "description": "Delete a scheme with all its nodes (irreversible)"
+    },
+    {
+      "name": "get_nodes_info",
+      "description": "List available trigger and action types with their config options, call it before creating nodes"
+    },
+    {
+      "name": "node_create_trigger",
+      "description": "Create a trigger node (for example WEBHOOK, INTERVAL)"
+    },
+    {
+      "name": "node_create_action",
+      "description": "Create an action node (HTTP request, email, integrations)"
+    },
+    {
+      "name": "node_update",
+      "description": "Change node slug or description"
+    },
+    {
+      "name": "node_connect",
+      "description": "Connect two nodes, for condition nodes connection_index 0 is the \"true\" output and 1 is the \"false\" output"
+    },
+    {
+      "name": "node_disconnect",
+      "description": "Remove a connection between two nodes"
+    },
+    {
+      "name": "node_find_existing_buttons",
+      "description": "List existing outputs of a node"
+    },
+    {
+      "name": "node_copy",
+      "description": "Copy a node"
+    },
+    {
+      "name": "node_get_scheme_edges",
+      "description": "List all connections of a scheme"
+    },
+    {
+      "name": "node_get",
+      "description": "Get a node by ID"
+    },
+    {
+      "name": "node_update_config",
+      "description": "Change node configuration"
+    },
+    {
+      "name": "node_list_by_scheme",
+      "description": "List nodes of a scheme"
+    },
+    {
+      "name": "node_delete",
+      "description": "Delete a node (irreversible)"
+    },
+    {
+      "name": "node_process_get",
+      "description": "Get one node run"
+    },
+    {
+      "name": "node_process_list_filtered",
+      "description": "List node runs by scheme, node or scheme run, with status filters and pages"
+    },
+    {
+      "name": "node_process_delete",
+      "description": "Delete a node run record"
+    },
+    {
+      "name": "scheme_process_get",
+      "description": "Get one scheme run"
+    },
+    {
+      "name": "scheme_process_list_filtered",
+      "description": "List scheme runs by scheme or project, with status filters and pages"
+    },
+    {
+      "name": "scheme_process_delete",
+      "description": "Delete a scheme run record"
+    },
+    {
+      "name": "payment_account_remove",
+      "description": "Remove the payment account from a user"
+    },
+    {
+      "name": "payment_account_update",
+      "description": "Change account name and automatic balance refill"
+    },
+    {
+      "name": "payment_account_get_by_user",
+      "description": "Get the payment account of a user"
+    },
+    {
+      "name": "payment_account_get_by_project",
+      "description": "Get the payment account of a project"
+    },
+    {
+      "name": "payment_account_get_transactions",
+      "description": "Get the transaction history"
+    },
+    {
+      "name": "analytics_orgs_list",
+      "description": "List analytics orgs the API key owner is a member of"
+    },
+    {
+      "name": "analytics_projects_list",
+      "description": "List app projects of an analytics org"
+    },
+    {
+      "name": "analytics_event_types_list",
+      "description": "List tracked event types of an app project, for export filters"
+    },
+    {
+      "name": "analytics_export_create",
+      "description": "Start an export of events (EVENTS), events of one user (USER_EVENTS) or users (USERS) to CSV or JSONL"
+    },
+    {
+      "name": "analytics_export_status",
+      "description": "Get export status (QUEUED, RUNNING, DONE, FAILED) and the download link when it is done"
+    },
+    {
+      "name": "analytics_exports_list",
+      "description": "List the 20 newest exports of an org"
+    }
+  ],
+  "tools_generated": false,
+  "keywords": [
+    "nana800",
+    "no-code",
+    "low-code",
+    "automation",
+    "workflow",
+    "webhook",
+    "api",
+    "analytics"
+  ],
+  "license": "MIT",
+  "privacy_policies": [
+    "https://docs.nana800.io/nana800-files/service_documents/nana800_privacy.pdf"
+  ],
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  },
+  "user_config": {
+    "api_key": {
+      "type": "string",
+      "title": "API key",
+      "description": "Your nana800.io API key. Create or copy it at https://cloud.nana800.io/settings",
+      "sensitive": true,
+      "required": true
+    },
+    "project_id": {
+      "type": "string",
+      "title": "Default project ID",
+      "description": "Optional. Used when a tool call does not pass project_id",
+      "required": false,
+      "default": ""
+    },
+    "scheme_id": {
+      "type": "string",
+      "title": "Default scheme ID",
+      "description": "Optional. Used when a tool call does not pass scheme_id",
+      "required": false,
+      "default": ""
+    },
+    "analytics_org_id": {
+      "type": "string",
+      "title": "Default analytics org ID",
+      "description": "Optional. Used when a tool call does not pass org_id, list your orgs with analytics_orgs_list",
+      "required": false,
+      "default": ""
+    }
+  }
+}

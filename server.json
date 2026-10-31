@@ -1,0 +1,73 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.nana800/mcp-server",
+  "title": "nana800",
+  "description": "Build and manage nana800.io no-code workflows: projects, blocks, run history and analytics exports",
+  "version": "1.2.1",
+  "websiteUrl": "https://nana800.io/en/",
+  "icons": [
+    {
+      "src": "https://nana800.io/pwa_icon_512.png",
+      "mimeType": "image/png",
+      "sizes": ["512x512"]
+    }
+  ],
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "nana800-mcp-server",
+      "version": "1.2.1",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "MCP_API_KEY",
+          "description": "nana800.io API key. Create or copy it at https://cloud.nana800.io/settings",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "MCP_PROJECT_ID",
+          "description": "Default project ID, used when a tool call does not pass project_id",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "MCP_SCHEME_ID",
+          "description": "Default scheme (workflow) ID, used when a tool call does not pass scheme_id",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "MCP_ANALYTICS_ORG_ID",
+          "description": "Default analytics org ID, used when a tool call does not pass org_id. List your orgs with analytics_orgs_list",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "MCP_API_URL",
+          "description": "nana800 API origin",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string",
+          "default": "https://api.nana800.io"
+        },
+        {
+          "name": "MCP_ANALYTICS_API_URL",
+          "description": "nana800 analytics API origin",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string",
+          "default": "https://api.analytics.nana800.io"
+        }
+      ]
+    }
+  ]
+}
