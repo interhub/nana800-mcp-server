@@ -6,6 +6,13 @@
   "type": "module",
   "license": "MIT",
   "homepage": "https://nana800.io",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/interhub/nana800-mcp-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/interhub/nana800-mcp-server/issues"
+  },
   "files": [
     "dist"
   ],

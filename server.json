@@ -5,11 +5,17 @@
   "description": "Build and manage nana800.io no-code workflows: projects, blocks, run history and analytics exports",
   "version": "1.2.1",
   "websiteUrl": "https://nana800.io/en/",
+  "repository": {
+    "url": "https://github.com/interhub/nana800-mcp-server",
+    "source": "github"
+  },
   "icons": [
     {
       "src": "https://nana800.io/pwa_icon_512.png",
       "mimeType": "image/png",
-      "sizes": ["512x512"]
+      "sizes": [
+        "512x512"
+      ]
     }
   ],
   "packages": [
