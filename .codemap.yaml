@@ -1,0 +1,142 @@
+# .codemap.yaml - AI-optimized codebase intelligence map (code-map skill format, adapted to an MCP server package)
+# Scope: npm package nana800-mcp-server: lets AI agents (Claude, Cursor, VS Code) manage nana800 projects, schemes,
+# blocks, runs, wallet and analytics exports. All paths are relative to this repository root.
+
+version: 1
+generated: "2026-11-08T16:40:00Z"
+generated_at_commit: "2a434c3"
+
+maps:
+  - path: ".codemap.yaml"
+    covers: "THIS map: the MCP server"
+  - path: "../../nana800_backend/.codemap.yaml"
+    covers: "backend ROOT map with the system section (all repos, domains, deploy)"
+  - path: "../../nana800_backend/src/apps/main/.codemap.yaml"
+    covers: "every REST endpoint and its DTO/access rules the tools call"
+  - path: "../../nana800_backend/src/apps/analytics_server/.codemap.yaml"
+    covers: "analytics endpoints used by export tools"
+
+overview:
+  name: "nana800-mcp-server"
+  purpose: "stdio MCP server with 44 tools, thin wrappers over nana800 REST API and analytics API"
+  tech: ["TypeScript (strict, ESM)", "@modelcontextprotocol/sdk", "zod 4", "esbuild bundle", "node >= 18"]
+  architecture: "agent → stdio → server.tool handler → fetch with x-nana-api-key → api.nana800.io or api.analytics.nana800.io → JSON text result"
+  version: "1.2.1 (package.json, manifest.json, server.json twice)"
+
+projects:
+  nana800-mcp-server:
+    path: "./"
+    type: library
+    entry: "src/index.ts"
+    run: "npx -y nana800-mcp-server (bin nana800-mcp → dist/index.js)"
+    transport: "stdio only; no resources, no prompts"
+    build: "npm run build (scripts/build.js: esbuild → dist/index.js, injects __PACKAGE_VERSION__), npm run typecheck"
+    publish: "npm run release (npm publish --access public, account interhub, web 2FA) → MCP Registry publish script kept outside the repo (namespace io.nana800, proof file served by the landing at /.well-known/mcp-registry-auth) → push to origin (GitLab) and github remotes"
+
+directories:
+  "src/": "index.ts (server + tool groups), api-client.ts (HTTP), types.ts"
+  "src/tools/": "one <area>.tools.ts per API area, each exports registerXxxTools(server)"
+  "scripts/": "build.js esbuild bundler"
+
+files:
+  - {path: "src/index.ts", purpose: "reads MCP_API_KEY (exit 1 if missing), McpServer, registers 7 tool groups, StdioServerTransport"}
+  - {path: "src/api-client.ts", purpose: "getApiClient / getAnalyticsApiClient: fetch, 30 s timeout, never throws → {success, data|error}, errors cut to 2000 chars; apiPath tagged template encodes ids; env id fallbacks"}
+  - {path: "src/types.ts", purpose: "Project, Scheme, Node, NodeProcess, SchemeProcess, PaymentAccount, Transaction, export types"}
+  - {path: "manifest.json", purpose: "MCPB bundle for Claude Desktop: tools[] list + user_config (api_key, project_id, scheme_id, analytics_org_id)"}
+  - {path: "server.json", purpose: "official MCP Registry entry io.nana800/mcp-server (npm, stdio, env vars)"}
+  - {path: "glama.json", purpose: "Glama directory listing"}
+  - {path: "README.md", purpose: "setup for Claude Desktop/Code, Cursor, VS Code; tools by area; Russian section"}
+
+config_env:
+  required: "MCP_API_KEY (user API key from https://cloud.nana800.io/settings, sent as x-nana-api-key to BOTH APIs)"
+  optional: "MCP_PROJECT_ID, MCP_SCHEME_ID, MCP_ANALYTICS_ORG_ID (default ids), MCP_API_URL (default https://api.nana800.io), MCP_ANALYTICS_API_URL (default https://api.analytics.nana800.io)"
+
+tools:
+  - group: project
+    path: "src/tools/project.tools.ts"
+    methods:
+      - "project_create → POST /project/create"
+      - "project_get → GET /project/get/:id"
+      - "project_list_by_payment_account → GET /project/get_list_by_payment_account/:payment_account_id"
+      - "project_update → PUT /project/update/:id"
+      - "project_delete → DELETE /project/delete/:id (irreversible)"
+  - group: scheme
+    path: "src/tools/scheme.tools.ts"
+    methods:
+      - "scheme_create → POST /scheme/create"
+      - "scheme_update → PUT /scheme/update/:id (name, description, enabled)"
+      - "scheme_get → GET /scheme/get/:id"
+      - "scheme_list_by_project → GET /scheme/project_list/:project_id"
+      - "scheme_get_context_type → GET /scheme/context_type/:id"
+      - "scheme_get_swagger_json → GET /scheme/openapi/:id (OpenAPI 3 of scheme webhooks)"
+      - "scheme_export → GET /scheme/export/:id"
+      - "scheme_import → POST /scheme/import/:id {nodes_list}"
+      - "scheme_delete → DELETE /scheme/delete/:id (irreversible)"
+  - group: node
+    path: "src/tools/node.tools.ts"
+    methods:
+      - "get_nodes_info → GET /info/nodes_info (cached in memory, validates block types)"
+      - "node_create_trigger → POST /node/create/trigger"
+      - "node_create_action → POST /node/create/action"
+      - "node_update → PUT /node/update/:id (slug, description)"
+      - "node_connect → PUT /node/connect_nodes (connection_index, edge_type COMMON|CONDITION|SWITCH; CONDITION 0 yes / 1 no)"
+      - "node_disconnect → PUT /node/disconnect_nodes"
+      - "node_find_existing_buttons → GET /node/find_existing_button_from/:id"
+      - "node_copy → POST /node/copy_node_create/:id"
+      - "node_get_scheme_edges → GET /node/scheme_node_edges_list/:scheme_id"
+      - "node_get → GET /node/get/:id"
+      - "node_update_config → PUT /node/update_config/:id"
+      - "node_list_by_scheme → GET /node/scheme_list/:scheme_id"
+      - "node_delete → DELETE /node/delete/:id"
+  - group: node_process
+    path: "src/tools/node-process.tools.ts"
+    methods:
+      - "node_process_get → GET /node-process/get/:id"
+      - "node_process_list_filtered → GET /node-process/scheme_list_filtered"
+      - "node_process_delete → DELETE /node-process/delete/:id"
+  - group: scheme_process
+    path: "src/tools/scheme-process.tools.ts"
+    methods:
+      - "scheme_process_get → GET /scheme-process/get/:id"
+      - "scheme_process_list_filtered → GET /scheme-process/scheme_list_filtered (filters running_trigger, completion_status)"
+      - "scheme_process_delete → DELETE /scheme-process/delete/:id"
+  - group: payment_account
+    path: "src/tools/payment-account.tools.ts"
+    methods:
+      - "payment_account_remove → DELETE /payment_account/remove_payment_account/:user_id"
+      - "payment_account_update → POST /payment_account/update_payment_account/:user_id"
+      - "payment_account_get_by_user → GET /payment_account/get_user_payment_account/:user_id"
+      - "payment_account_get_by_project → GET /payment_account/get_project_payment_account/:project_id"
+      - "payment_account_get_transactions → GET /payment_account/get_payment_account_transactions_history/:payment_account_id"
+  - group: analytics_export (analytics API)
+    path: "src/tools/analytics-export.tools.ts"
+    methods:
+      - "analytics_orgs_list → main GET /user/own, then GET /analytics_org_access/get_orgs_of_user/:user_id"
+      - "analytics_projects_list → GET /analytics_app_projects/get_projects_by_org/:org_id"
+      - "analytics_event_types_list → GET /analytics_event_types/get_event_types_by_app_project/:app_project_id"
+      - "analytics_export_create → POST /analytics_exports/create_export (EVENTS|USER_EVENTS|USERS, CSV|JSONL; client-side filter checks)"
+      - "analytics_export_status → GET /analytics_exports/get_export/:export_id (download url when DONE)"
+      - "analytics_exports_list → GET /analytics_exports/get_exports_list/:org_id"
+
+relationships:
+  - {from: "all tools", to: "src/api-client.ts", type: calls, note: "x-nana-api-key; works because backend AuthGuard accepts the user API key on every guarded route"}
+  - {from: "node tools", to: "GET /info/nodes_info", type: depends, note: "block types and config fields come from the backend catalog"}
+
+conventions:
+  - "each tool returns content [{type:'text', text: JSON.stringify(result, null, 2)}]; errors use the same shape {success:false, error}, never thrown"
+  - "zod .describe() texts are the agent-facing docs; keep manifest.json tools[] descriptions in sync"
+  - "tool names snake_case <entity>_<action>; optional ids fall back to env defaults (getProjectId, getSchemeId)"
+
+gotchas:
+  - "backend ValidationPipe forbids unknown fields: tool bodies must equal backend DTO fields exactly, or 400"
+  - "version lives in package.json, manifest.json and server.json (twice): bump all together"
+  - "a new tool must also be added to manifest.json tools[] and README"
+  - "delete tools are irreversible and run without confirmation"
+  - "origin remote URL contains a token: never paste `git remote -v`"
+  - "dist/ is the only folder in the npm package and is git-ignored"
+
+entry_points_for_tasks:
+  - "add a tool → server.tool(...) in src/tools/<area>.tools.ts (new area: new file + registerXxxTools call in src/index.ts) + manifest.json + README + version bump"
+  - "endpoint changed on backend → fix the path/body in the tool file; check the DTO in ../../nana800_backend/src/apps/main/routes/"
+  - "change base URLs or auth header → src/api-client.ts"
+  - "publish → bump 3 files, npm run build, npm publish --access public, registry script, push origin and github"

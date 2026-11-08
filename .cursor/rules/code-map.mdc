@@ -1,0 +1,6 @@
+---
+description: AI code map of this repository, read it before exploring the code
+alwaysApply: true
+---
+
+Read `.codemap.yaml` in the repository root before exploring the code: it maps the public API, files, the backend endpoints this package calls and how to publish it, and points to the backend maps in `../../nana800_backend/`; update it in the same commit when you change the structure it describes.
