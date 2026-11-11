@@ -7,6 +7,8 @@ import { registerNodeProcessTools } from './tools/node-process.tools.js';
 import { registerSchemeProcessTools } from './tools/scheme-process.tools.js';
 import { registerPaymentAccountTools } from './tools/payment-account.tools.js';
 import { registerAnalyticsExportTools } from './tools/analytics-export.tools.js';
+import { registerAnalyticsChartTools } from './tools/analytics-chart.tools.js';
+import { registerAnalyticsDashboardTools } from './tools/analytics-dashboard.tools.js';
 
 declare const __PACKAGE_VERSION__: string;
 
@@ -31,6 +33,8 @@ const main = async () => {
   registerSchemeProcessTools(server);
   registerPaymentAccountTools(server);
   registerAnalyticsExportTools(server);
+  registerAnalyticsChartTools(server);
+  registerAnalyticsDashboardTools(server);
   const transport = new StdioServerTransport();
   await server.connect(transport);
 };

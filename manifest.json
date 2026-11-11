@@ -3,9 +3,9 @@
   "manifest_version": "0.3",
   "name": "nana800-mcp-server",
   "display_name": "nana800",
-  "version": "1.2.1",
-  "description": "Build and manage nana800.io no-code workflows: projects, blocks, run history and analytics exports",
-  "long_description": "MCP server for [nana800.io](https://nana800.io/en/), a no-code platform for backend logic and workflow automation. Workflows (schemes) are built from trigger and action blocks (nodes): webhooks, timers, HTTP requests, Telegram, Google Sheets, GPT and other integrations.\n\nWith it the assistant creates projects and schemes, adds, configures and connects blocks, exports and imports schemes as JSON, reads the OpenAPI document of scheme webhooks, reads the run history of schemes and blocks, reads the payment account and its transactions, and exports analytics events and users to CSV or JSON Lines files.\n\nNeeds a nana800.io API key from https://cloud.nana800.io/settings. Delete and remove tools can not be undone.",
+  "version": "1.3.0",
+  "description": "Build and manage nana800.io no-code workflows and analytics: projects, blocks, run history, charts, dashboards and exports",
+  "long_description": "MCP server for [nana800.io](https://nana800.io/en/), a no-code platform for backend logic and workflow automation. Workflows (schemes) are built from trigger and action blocks (nodes): webhooks, timers, HTTP requests, Telegram, Google Sheets, GPT and other integrations.\n\nWith it the assistant creates projects and schemes, adds, configures and connects blocks, exports and imports schemes as JSON, reads the OpenAPI document of scheme webhooks, reads the run history of schemes and blocks, reads the payment account and its transactions, builds analytics charts (lines, bars, funnels, retention, splits by a property) and dashboards from a request in words, turns on public dashboard links, and exports analytics events and users to CSV or JSON Lines files.\n\nNeeds a nana800.io API key from https://cloud.nana800.io/settings. Delete and remove tools can not be undone.",
   "author": {
     "name": "Bekender",
     "url": "https://nana800.io/en/"
@@ -205,6 +205,66 @@
     {
       "name": "analytics_exports_list",
       "description": "List the 20 newest exports of an org"
+    },
+    {
+      "name": "analytics_event_properties_list",
+      "description": "List property keys of an event type for chart conditions and splits"
+    },
+    {
+      "name": "analytics_chart_preview",
+      "description": "Calculate a chart without saving it and return its numbers"
+    },
+    {
+      "name": "analytics_chart_create",
+      "description": "Save a line, bars, funnel or retention chart, optionally straight onto a dashboard"
+    },
+    {
+      "name": "analytics_chart_get",
+      "description": "Get a saved chart as an editable definition with its link"
+    },
+    {
+      "name": "analytics_chart_update",
+      "description": "Change a saved chart: name, series, period, metric, display settings"
+    },
+    {
+      "name": "analytics_chart_delete",
+      "description": "Delete a chart and remove it from dashboards"
+    },
+    {
+      "name": "analytics_dashboards_list",
+      "description": "List dashboards of an analytics org with links"
+    },
+    {
+      "name": "analytics_dashboard_get",
+      "description": "Get a dashboard with its charts, order and widths"
+    },
+    {
+      "name": "analytics_dashboard_create",
+      "description": "Create an empty dashboard"
+    },
+    {
+      "name": "analytics_dashboard_update",
+      "description": "Rename a dashboard or change its description"
+    },
+    {
+      "name": "analytics_dashboard_add_chart",
+      "description": "Put a chart onto a dashboard at a position with a width"
+    },
+    {
+      "name": "analytics_dashboard_set_chart_position",
+      "description": "Move a chart on a dashboard or change its width"
+    },
+    {
+      "name": "analytics_dashboard_remove_chart",
+      "description": "Take a chart off a dashboard"
+    },
+    {
+      "name": "analytics_dashboard_share_link",
+      "description": "Turn the public dashboard link on, reissue it or turn it off"
+    },
+    {
+      "name": "analytics_dashboard_delete",
+      "description": "Delete a dashboard, optionally with its charts"
     }
   ],
   "tools_generated": false,

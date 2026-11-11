@@ -86,6 +86,7 @@ export type AnalyticsAppProject = {
 export type AnalyticsEventType = {
   _id: string;
   analytics_event_name: string;
+  events_count?: number;
   analytics_app_project?: string;
   analytics_org?: string;
 };
@@ -109,4 +110,28 @@ export type AnalyticsExportWithDownloadUrl = {
   export_job: AnalyticsExportJob;
   download_url: string | null;
   download_url_expires_time: string | null;
+};
+
+export type AnalyticsPropertyRecord = {
+  _id: string;
+  property_key: string;
+  parent_type?: 'EVENT' | 'USER';
+  analytics_event_type_record?: string | null;
+  seen_count?: number;
+  last_seen_time?: string;
+};
+
+export type AnalyticsDashboardChartRecord = {
+  chart_id: string;
+  chart_position_data?: { order_index: number; width_size: number };
+};
+
+export type AnalyticsDashboard = {
+  _id: string;
+  dashboard_name: string;
+  dashboard_description?: string;
+  analytics_org: string;
+  dashboard_charts_data_array?: AnalyticsDashboardChartRecord[];
+  share_token?: string | null;
+  created_time?: string;
 };

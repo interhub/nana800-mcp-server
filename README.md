@@ -11,9 +11,10 @@ With this server an AI assistant (Claude, Cursor, VS Code and any other MCP clie
 - 📤 exports and imports schemes as JSON, reads the OpenAPI document of scheme webhooks
 - 🔍 reads the run history of schemes and of single blocks
 - 💳 reads the payment account and its transactions
+- 📈 builds analytics charts and dashboards from a request in words: lines, bars, funnels, retention, splits by a property, filters, public dashboard links
 - 📊 exports analytics events and users to CSV or JSON Lines files
 
-The server runs on your machine over stdio and calls `https://api.nana800.io` and `https://api.analytics.nana800.io` with your API key. 44 tools, Node.js 18 or newer.
+The server runs on your machine over stdio and calls `https://api.nana800.io` and `https://api.analytics.nana800.io` with your API key. 59 tools, Node.js 18 or newer.
 
 ## 🔑 Get an API key
 
@@ -119,6 +120,7 @@ MCP_API_KEY=your_api_key npx -y nana800-mcp-server
 | `MCP_ANALYTICS_ORG_ID` | No | Default analytics org ID for tools with an optional `org_id`. Get it with `analytics_orgs_list` or from the `org` parameter of the analytics page URL |
 | `MCP_API_URL` | No | API origin, `https://api.nana800.io` by default |
 | `MCP_ANALYTICS_API_URL` | No | Analytics API origin, `https://api.analytics.nana800.io` by default |
+| `MCP_CABINET_URL` | No | Web app origin used in chart and dashboard links, `https://cloud.nana800.io` by default |
 
 An ID passed in a tool call always wins over the default. Every API request has a 30 second timeout.
 
@@ -187,13 +189,81 @@ An ID passed in a tool call always wins over the default. Every API request has 
 | `payment_account_get_transactions` | Get the transaction history |
 | `payment_account_remove` | Remove the payment account from a user |
 
-### Analytics data export
+### Analytics: orgs, projects, events
 
 | Tool | What it does |
 |------|--------------|
 | `analytics_orgs_list` | List analytics orgs the API key owner is a member of |
 | `analytics_projects_list` | List app projects of an analytics org |
-| `analytics_event_types_list` | List tracked event types of an app project, for export filters |
+| `analytics_event_types_list` | List tracked event types of an app project, for chart series and export filters |
+| `analytics_event_properties_list` | List property keys of an event type, the most used first, for chart conditions and splits |
+
+### Analytics charts
+
+| Tool | What it does |
+|------|--------------|
+| `analytics_chart_preview` | Calculate a chart without saving it and return its numbers: totals per series, values per period, funnel steps, retention. Also takes `chart_id` of a saved chart |
+| `analytics_chart_create` | Save a chart (`LINES_CHART`, `BARS`, `FUNNEL`, `RETENTION`) and return `chart_url`; `add_to_dashboard` puts it onto a dashboard in the same call |
+| `analytics_chart_get` | Get a saved chart as an editable definition and its link |
+| `analytics_chart_update` | Change a saved chart: name, series, period, metric, chart type, display settings |
+| `analytics_chart_delete` | Delete a chart and remove it from every dashboard (irreversible) |
+
+A chart is described the same way in `analytics_chart_preview`, `analytics_chart_create` and `analytics_chart_update`:
+
+| Field | Meaning |
+|-------|---------|
+| `app_project_id` | Analytics project whose events are counted |
+| `chart_variant` | `LINES_CHART` trend, `BARS` bars per period or one total bar per series, `FUNNEL` ordered steps, `RETENTION` start event + return event |
+| `series` | `event_type_id`, `title` (label or funnel step name), `conditions` on event properties, `breakdown_property_key` to split by property values (lines and bars) |
+| `common_conditions` | Conditions added to every series, for example to drop test traffic |
+| `user_conditions` | Conditions on user properties for the whole chart |
+| `metric` | `UNIQ_USERS` (default) or `TOTAL_EVENTS` |
+| `period` | `time_scale` (`HOURLY`, `DAILY`, `WEEKLY`, `MONTHLY`) and `last_periods_count` for a live period (default last 30), or `from_time` + `to_time` for fixed dates |
+| `funnel_conversion_window_seconds` | Funnel: all steps within this time from the first step |
+| `retention_periods_count` | Retention: periods after the start period to track returns |
+| `timezone_offset_minutes` | Day boundaries, minutes east of UTC (Moscow 180) |
+| `display_settings` | `bars_mode` (`GROUPED`, `STACKED`, `TOTAL`), `value_mode`, renamed or colored series, up to 5 formulas like conversion = A / B |
+
+The server writes the series where the web chart builder expects them, so every chart made through MCP opens and can be edited in the web app like a chart made by hand.
+
+Example: "build a funnel from a view to a purchase for the last 30 days" becomes
+
+```json
+{
+  "chart_name": "Funnel: view → purchase",
+  "app_project_id": "<project id>",
+  "chart_variant": "FUNNEL",
+  "series": [
+    { "event_type_id": "<id of page_viewed>", "title": "View" },
+    { "event_type_id": "<id of checkout_started>", "title": "Checkout" },
+    { "event_type_id": "<id of purchase_completed>", "title": "Purchase" }
+  ],
+  "period": { "time_scale": "DAILY", "last_periods_count": 30 },
+  "funnel_conversion_window_seconds": 604800,
+  "add_to_dashboard": { "dashboard_id": "<dashboard id>", "width_size": 2 }
+}
+```
+
+### Analytics dashboards
+
+| Tool | What it does |
+|------|--------------|
+| `analytics_dashboards_list` | List dashboards of an org with web app and public links |
+| `analytics_dashboard_get` | Get a dashboard with its charts in order, widths and links |
+| `analytics_dashboard_create` | Create an empty dashboard |
+| `analytics_dashboard_update` | Rename a dashboard or change its description |
+| `analytics_dashboard_add_chart` | Put a saved chart onto a dashboard at a position with a width, the charts below move down |
+| `analytics_dashboard_set_chart_position` | Move a chart or change its width |
+| `analytics_dashboard_remove_chart` | Take a chart off a dashboard, the chart stays saved |
+| `analytics_dashboard_share_link` | Turn the public link on, reissue it (the old link stops working at once) or turn it off |
+| `analytics_dashboard_delete` | Delete a dashboard, with `delete_charts` also its charts that are not on other dashboards (irreversible) |
+
+A dashboard is a grid of 3 columns: `width_size` 1 is a third of a row, 2 is two thirds, 3 is the full row. Keep the sum of widths in a row equal to 3. The public link `https://cloud.nana800.io/share/dashboard/<token>` shows the charts without login, read only; turning it on needs the owner or editor role in the org.
+
+### Analytics data export
+
+| Tool | What it does |
+|------|--------------|
 | `analytics_export_create` | Start an export of events (`EVENTS`), events of one user (`USER_EVENTS`) or users (`USERS`) to CSV or JSONL |
 | `analytics_export_status` | Get export status (`QUEUED`, `RUNNING`, `DONE`, `FAILED`) and the download link when it is done |
 | `analytics_exports_list` | List the 20 newest exports of an org |
@@ -227,6 +297,9 @@ curl --compressed -o export.csv "<download_url>"
 - "Export scheme X as JSON and import its nodes into scheme Y"
 - "Show the last transactions of my payment account"
 - "Export all purchase events of the last week to CSV and give me the download link"
+- "Build a funnel from a view to a purchase for the last 30 days"
+- "Make a dashboard for my site: visitors per day, traffic channels and a funnel from a visit to a call, turn on the public link"
+- "Which pages bring the most calls? Show it as total bars split by page"
 
 ## 🔗 Links
 
@@ -239,11 +312,12 @@ curl --compressed -o export.csv "<download_url>"
 
 ## 🇷🇺 На русском
 
-**nana800-mcp-server** - MCP-сервер для [nana800.io](https://nana800.io), no-code платформы для серверной логики и автоматизации. Через него ИИ-ассистент (Claude, Cursor, VS Code) создаёт проекты и схемы, добавляет и связывает блоки, смотрит историю запусков, данные платёжного аккаунта и выгружает аналитику в CSV или JSON Lines.
+**nana800-mcp-server** - MCP-сервер для [nana800.io](https://nana800.io), no-code платформы для серверной логики и автоматизации. Через него ИИ-ассистент (Claude, Cursor, VS Code) создаёт проекты и схемы, добавляет и связывает блоки, смотрит историю запусков, данные платёжного аккаунта, строит графики и дашборды аналитики по просьбе словами и выгружает аналитику в CSV или JSON Lines.
 
 - 🔑 Ключ API: [cloud.nana800.io/settings](https://cloud.nana800.io/settings), его нужно передать в переменной `MCP_API_KEY`
 - 🚀 Запуск: `npx -y nana800-mcp-server`, готовые настройки для клиентов выше в разделе Quick start
 - 🖥️ Сервер работает на вашем компьютере и ходит в API nana800 от имени владельца ключа
+- 📈 Графики и дашборды: попросите, например, «построй воронку от просмотра до покупки за 30 дней» или «собери дашборд сайта из трёх графиков и включи публичную ссылку». Ассистент сам найдёт события, проверит цифры предпросмотром, сохранит графики, разложит их на дашборде и пришлёт ссылки на кабинет и публичную страницу
 - ⚠️ Инструменты удаления (`project_delete`, `scheme_delete`, `node_delete` и другие) необратимы
 - 📚 Документация: [nana800.gitbook.io/doc](https://nana800.gitbook.io/doc)
 

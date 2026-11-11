@@ -1,10 +1,10 @@
 # .codemap.yaml - AI-optimized codebase intelligence map (code-map skill format, adapted to an MCP server package)
 # Scope: npm package nana800-mcp-server: lets AI agents (Claude, Cursor, VS Code) manage nana800 projects, schemes,
-# blocks, runs, wallet and analytics exports. All paths are relative to this repository root.
+# blocks, runs, wallet, analytics charts, dashboards and exports. All paths are relative to this repository root.
 
 version: 1
-generated: "2026-11-08T16:40:00Z"
-generated_at_commit: "2a434c3"
+generated: "2026-11-11T21:00:00Z"
+generated_at_commit: "7ed7330"
 
 maps:
   - path: ".codemap.yaml"
@@ -14,14 +14,14 @@ maps:
   - path: "../../nana800_backend/src/apps/main/.codemap.yaml"
     covers: "every REST endpoint and its DTO/access rules the tools call"
   - path: "../../nana800_backend/src/apps/analytics_server/.codemap.yaml"
-    covers: "analytics endpoints used by export tools"
+    covers: "analytics endpoints used by export, chart and dashboard tools"
 
 overview:
   name: "nana800-mcp-server"
-  purpose: "stdio MCP server with 44 tools, thin wrappers over nana800 REST API and analytics API"
+  purpose: "stdio MCP server with 59 tools, thin wrappers over nana800 REST API and analytics API"
   tech: ["TypeScript (strict, ESM)", "@modelcontextprotocol/sdk", "zod 4", "esbuild bundle", "node >= 18"]
   architecture: "agent → stdio → server.tool handler → fetch with x-nana-api-key → api.nana800.io or api.analytics.nana800.io → JSON text result"
-  version: "1.2.1 (package.json, manifest.json, server.json twice)"
+  version: "1.3.0 (package.json, manifest.json, server.json twice)"
 
 projects:
   nana800-mcp-server:
@@ -31,16 +31,20 @@ projects:
     run: "npx -y nana800-mcp-server (bin nana800-mcp → dist/index.js)"
     transport: "stdio only; no resources, no prompts"
     build: "npm run build (scripts/build.js: esbuild → dist/index.js, injects __PACKAGE_VERSION__), npm run typecheck"
+    test: "npm test (scripts/test.js: esbuild bundles tests/*.test.ts into .test-dist, runs node --test, removes it)"
     publish: "npm run release (npm publish --access public, account interhub, web 2FA) → MCP Registry publish script kept outside the repo (namespace io.nana800, proof file served by the landing at /.well-known/mcp-registry-auth) → push to origin (GitLab) and github remotes"
 
 directories:
-  "src/": "index.ts (server + tool groups), api-client.ts (HTTP), types.ts"
+  "src/": "index.ts (server + tool groups), api-client.ts (HTTP), types.ts, analytics-schemas.ts (shared condition schema), analytics-chart-builder.ts (pure chart logic)"
+  "tests/": "node:test files: chart body builder, saved chart reading, render summary, links, dashboard layout on a fake fetch"
   "src/tools/": "one <area>.tools.ts per API area, each exports registerXxxTools(server)"
   "scripts/": "build.js esbuild bundler"
 
 files:
   - {path: "src/index.ts", purpose: "reads MCP_API_KEY (exit 1 if missing), McpServer, registers 7 tool groups, StdioServerTransport"}
   - {path: "src/api-client.ts", purpose: "getApiClient / getAnalyticsApiClient: fetch, 30 s timeout, never throws → {success, data|error}, errors cut to 2000 chars; apiPath tagged template encodes ids; env id fallbacks"}
+  - {path: "src/analytics-chart-builder.ts", purpose: "chart definition zod shape (series, common_conditions, user_conditions, metric, period, funnel/retention settings), display settings, validateChartDefinition, buildChartRequestBody (series written to search_events_input.event_types_filter AND group_rules.event_types_group_items, param_prop_id/breakdown_property_id from property records), savedChartToDefinition, summarizeChartRender, web app links (MCP_CABINET_URL)"}
+  - {path: "src/tools/tool-result.ts", purpose: "toolResult (compact JSON text), toolError, unwrap (throws on a failed API response)"}
   - {path: "src/types.ts", purpose: "Project, Scheme, Node, NodeProcess, SchemeProcess, PaymentAccount, Transaction, export types"}
   - {path: "manifest.json", purpose: "MCPB bundle for Claude Desktop: tools[] list + user_config (api_key, project_id, scheme_id, analytics_org_id)"}
   - {path: "server.json", purpose: "official MCP Registry entry io.nana800/mcp-server (npm, stdio, env vars)"}
@@ -108,6 +112,27 @@ tools:
       - "payment_account_get_by_user → GET /payment_account/get_user_payment_account/:user_id"
       - "payment_account_get_by_project → GET /payment_account/get_project_payment_account/:project_id"
       - "payment_account_get_transactions → GET /payment_account/get_payment_account_transactions_history/:payment_account_id"
+  - group: analytics_chart (analytics API)
+    path: "src/tools/analytics-chart.tools.ts"
+    methods:
+      - "analytics_event_properties_list → GET /analytics_property_records/get_properties_by_event_type/:event_type_id"
+      - "analytics_chart_preview → PUT /analytics_charts/render_analytics_chart_view_data (definition or saved chart_id) → summarized numbers"
+      - "analytics_chart_create → POST /analytics_charts/create_chart (+ optional add_to_dashboard)"
+      - "analytics_chart_get → GET /analytics_charts/get_chart_by_id/:chart_id → definition"
+      - "analytics_chart_update → GET chart, merge changed fields, POST /analytics_charts/update_chart/:chart_id (full body)"
+      - "analytics_chart_delete → GET get_dashboard_where_chart_applied, POST remove_chart_from_dashboard each, DELETE /analytics_charts/delete_chart_by_id/:chart_id"
+  - group: analytics_dashboard (analytics API)
+    path: "src/tools/analytics-dashboard.tools.ts"
+    methods:
+      - "analytics_dashboards_list → GET /analytics_org_dashboards/get_dashboards_by_org/:org_id"
+      - "analytics_dashboard_get → GET get_dashboard_by_id/:id + GET get_chart_by_id for names (8 in parallel)"
+      - "analytics_dashboard_create → POST /analytics_org_dashboards/create_dashboard"
+      - "analytics_dashboard_update → PUT /analytics_org_dashboards/update_dashboard/:id (analytics_org required)"
+      - "analytics_dashboard_add_chart → POST add_chart_to_dashboard/:id, then PUT set_chart_position_data for charts below"
+      - "analytics_dashboard_set_chart_position → PUT set_chart_position_data for every chart whose place changed"
+      - "analytics_dashboard_remove_chart → POST remove_chart_from_dashboard/:dashboard_id/:chart_id"
+      - "analytics_dashboard_share_link → PUT set_dashboard_share_link/:id {is_enabled, is_new_token} (owner or editor)"
+      - "analytics_dashboard_delete → DELETE delete_dashboard/:id (+ delete charts not used on other dashboards)"
   - group: analytics_export (analytics API)
     path: "src/tools/analytics-export.tools.ts"
     methods:
@@ -123,7 +148,7 @@ relationships:
   - {from: "node tools", to: "GET /info/nodes_info", type: depends, note: "block types and config fields come from the backend catalog"}
 
 conventions:
-  - "each tool returns content [{type:'text', text: JSON.stringify(result, null, 2)}]; errors use the same shape {success:false, error}, never thrown"
+  - "each tool returns content [{type:'text', text: JSON.stringify(result, null, 2)}] (chart and dashboard tools: compact JSON via tool-result.ts); errors use the same shape {success:false, error}, never thrown"
   - "zod .describe() texts are the agent-facing docs; keep manifest.json tools[] descriptions in sync"
   - "tool names snake_case <entity>_<action>; optional ids fall back to env defaults (getProjectId, getSchemeId)"
 
@@ -134,6 +159,11 @@ gotchas:
   - "delete tools are irreversible and run without confirmation"
   - "origin remote URL contains a token: never paste `git remote -v`"
   - "dist/ is the only folder in the npm package and is git-ignored"
+  - "chart series must be in BOTH search_events_input.event_types_filter and group_rules.event_types_group_items, else the web chart builder shows no series"
+  - "deleting a chart on the backend does not remove it from dashboards: analytics_chart_delete removes it first"
+  - "add_chart_to_dashboard does not shift order_index of other charts: the tools renumber them with set_chart_position_data"
+  - "is_fixed_time_period true needs both dates; live charts use false + slice_last_periods_count"
+  - "FUNNEL and RETENTION ignore event_property_key; RETENTION uses the first 2 series only"
 
 entry_points_for_tasks:
   - "add a tool → server.tool(...) in src/tools/<area>.tools.ts (new area: new file + registerXxxTools call in src/index.ts) + manifest.json + README + version bump"

@@ -1,12 +1,8 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { apiPath, getAnalyticsApiClient, getAnalyticsOrgId, getApiClient } from '../api-client.js';
+import { conditionSchema, MAX_CONDITIONS_PER_FILTER, MAX_EVENT_TYPE_FILTERS } from '../analytics-schemas.js';
 import type { AnalyticsAppProject, AnalyticsEventType, AnalyticsExportJob, AnalyticsExportWithDownloadUrl, AnalyticsOrg } from '../types.js';
-
-const MAX_EVENT_TYPE_FILTERS = 20;
-const MAX_CONDITIONS_PER_FILTER = 20;
-const MAX_CONDITION_VALUES = 50;
-const MAX_CONDITION_VALUE_LENGTH = 200;
 
 const EXPORT_FLOW_HINT =
   'The export runs in the background: export_status goes QUEUED -> RUNNING -> DONE or FAILED. ' +
@@ -18,18 +14,6 @@ const EXPORT_FLOW_HINT =
 const ISO_DATE_TIME_ERROR = 'must be an ISO 8601 date-time with a timezone, e.g. 2026-10-01T00:00:00.000Z or 2026-10-01T00:00:00+03:00. Relative values like "last 7 days" are not accepted, compute the exact date-time';
 
 const isoDateTimeSchema = z.iso.datetime({ offset: true, error: ISO_DATE_TIME_ERROR });
-
-const conditionSchema = z.object({
-  param_name: z.string().max(MAX_CONDITION_VALUE_LENGTH).describe('Property name'),
-  param_values: z
-    .array(z.string().max(MAX_CONDITION_VALUE_LENGTH))
-    .max(MAX_CONDITION_VALUES)
-    .describe('Values to compare with. EQUAL and CONTAINS match any of the values, NOT_EQUAL and NOT_CONTAINS match none of them, GREATER_THAN and LESS_THAN use the first value as a number, IS_SET and IS_NOT_SET ignore the values (pass [])'),
-  condition: z
-    .enum(['EQUAL', 'NOT_EQUAL', 'CONTAINS', 'NOT_CONTAINS', 'GREATER_THAN', 'LESS_THAN', 'IS_SET', 'IS_NOT_SET'])
-    .optional()
-    .describe('Comparison, EQUAL by default'),
-});
 
 const eventTypeFilterSchema = z.object({
   event_type_id: z.string().describe('Event type ID from analytics_event_types_list'),
@@ -82,7 +66,7 @@ export const registerAnalyticsExportTools = (server: McpServer) => {
   );
   server.tool(
     'analytics_projects_list',
-    'List app projects of an analytics org (org_id from analytics_orgs_list or MCP_ANALYTICS_ORG_ID). Use the project _id as app_project_id in analytics_event_types_list and analytics_export_create',
+    'List app projects of an analytics org (org_id from analytics_orgs_list or MCP_ANALYTICS_ORG_ID). Use the project _id as app_project_id in analytics_event_types_list, analytics_export_create and the chart tools',
     {
       org_id: z.string().optional().describe('The analytics org ID from analytics_orgs_list (uses MCP_ANALYTICS_ORG_ID env if not provided)'),
     },
@@ -103,15 +87,20 @@ export const registerAnalyticsExportTools = (server: McpServer) => {
   );
   server.tool(
     'analytics_event_types_list',
-    'List tracked event types of an analytics app project. Use the event type _id as event_type_id in analytics_export_create filters',
+    'List tracked event types of an analytics app project (_id, analytics_event_name, events_count), the most frequent first. Pick events for a request in words by their names (e.g. a call button: phone_clicked, a purchase: purchase_completed). Use the event type _id as event_type_id in chart series and in analytics_export_create filters',
     {
       app_project_id: z.string().describe('The analytics app project ID from analytics_projects_list'),
     },
     async ({ app_project_id }) => {
       const client = getAnalyticsApiClient();
       const result = await client.get<AnalyticsEventType[]>(apiPath`/analytics_event_types/get_event_types_by_app_project/${app_project_id}`);
+      const data = result.success
+        ? (result.data || [])
+            .map((eventType) => ({ _id: eventType._id, analytics_event_name: eventType.analytics_event_name, events_count: eventType.events_count ?? null }))
+            .sort((a, b) => (b.events_count || 0) - (a.events_count || 0))
+        : undefined;
       return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: JSON.stringify(result.success ? { success: true, data } : result) }],
       };
     }
   );
